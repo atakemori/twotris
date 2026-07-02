@@ -32,7 +32,7 @@ const COLORS := {
 
 # Returns a fresh Piece for the given type.
 static func make(type: Piece.Type) -> Piece:
-	var color := COLORS[type]
+	var color: Color = COLORS[type]
 	var offsets: Array[Vector2i]
 
 	match type:

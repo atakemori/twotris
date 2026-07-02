@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://cbyukjoe442af"]
+
+[ext_resource type="Script" uid="uid://ojtedbhxcfxn" path="res://scripts/Main.gd" id="1_rarhs"]
+[ext_resource type="PackedScene" uid="uid://crap1g0btwudm" path="res://scenes/StartScreen.tscn" id="2_vcsgt"]
+[ext_resource type="PackedScene" uid="uid://dee0gj1t4kwal" path="res://scenes/GameScreen.tscn" id="3_c01mt"]
+[ext_resource type="PackedScene" uid="uid://imbwse04piwb" path="res://scenes/EndScreen.tscn" id="4_nxtc6"]
+
+[node name="Main" type="Node" unique_id=512712054]
+script = ExtResource("1_rarhs")
+
+[node name="StartScreen" parent="." unique_id=414424924 instance=ExtResource("2_vcsgt")]
+
+[node name="GameScreen" parent="." unique_id=1696644829 instance=ExtResource("3_c01mt")]
+
+[node name="EndScreen" parent="." unique_id=2058341300 instance=ExtResource("4_nxtc6")]

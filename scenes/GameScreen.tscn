@@ -1,0 +1,89 @@
+[gd_scene format=3 uid="uid://dee0gj1t4kwal"]
+
+[ext_resource type="Script" uid="uid://def1xtvwxa5rm" path="res://scripts/InputRouter.gd" id="1_gj13t"]
+[ext_resource type="Script" uid="uid://dm5pu0hfcfo5n" path="res://scripts/Board.gd" id="2_osnef"]
+
+[node name="GameScreen" type="CanvasLayer" unique_id=1696644829]
+script = ExtResource("1_gj13t")
+
+[node name="Control" type="Control" parent="." unique_id=854167541]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Control" unique_id=1312780904]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="LeftPanel" type="VBoxContainer" parent="Control/HBoxContainer" unique_id=2035837146]
+layout_mode = 2
+
+[node name="LeftScoreLabel" type="Label" parent="Control/HBoxContainer/LeftPanel" unique_id=2106111626]
+layout_mode = 2
+text = "L: 0"
+
+[node name="LeftNextLabel" type="Label" parent="Control/HBoxContainer/LeftPanel" unique_id=39251779]
+layout_mode = 2
+text = "NEXT"
+
+[node name="BoardL" type="Node2D" parent="Control/HBoxContainer" unique_id=1448358456]
+script = ExtResource("2_osnef")
+metadata/_custom_type_script = "uid://dm5pu0hfcfo5n"
+
+[node name="VSeparator" type="VSeparator" parent="Control/HBoxContainer" unique_id=80967980]
+layout_mode = 2
+
+[node name="BoardR" type="Node2D" parent="Control/HBoxContainer" unique_id=574012232]
+script = ExtResource("2_osnef")
+metadata/_custom_type_script = "uid://dm5pu0hfcfo5n"
+
+[node name="RightPanel" type="VBoxContainer" parent="Control/HBoxContainer" unique_id=1685534019]
+layout_mode = 2
+
+[node name="RightScoreLabel" type="Label" parent="Control/HBoxContainer/RightPanel" unique_id=531140766]
+layout_mode = 2
+text = "R: 0"
+
+[node name="RightNextLabel" type="Label" parent="Control/HBoxContainer/RightPanel" unique_id=971958621]
+layout_mode = 2
+text = "NEXT"
+
+[node name="PauseOverlay" type="ColorRect" parent="Control" unique_id=31890708]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.6, 0.6, 0.6, 1)
+
+[node name="Label" type="Label" parent="Control/PauseOverlay" unique_id=1337119415]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -133.5
+offset_top = -11.5
+offset_right = 133.5
+offset_bottom = 11.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "PAUSED - press ESC or P to resume"

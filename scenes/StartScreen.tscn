@@ -1,0 +1,51 @@
+[gd_scene format=3 uid="uid://crap1g0btwudm"]
+
+[ext_resource type="Script" uid="uid://c0jmteebvceoc" path="res://scripts/StartScreen.gd" id="1_tx5wa"]
+
+[node name="StartScreen" type="CanvasLayer" unique_id=414424924]
+script = ExtResource("1_tx5wa")
+
+[node name="Control" type="Control" parent="." unique_id=1015484802]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control" unique_id=1652476932]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Control/VBoxContainer" unique_id=1108061452]
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "DUALTRIS"
+
+[node name="SubLabel" type="Label" parent="Control/VBoxContainer" unique_id=1865148626]
+layout_mode = 2
+text = "Control both boards at the same time."
+
+[node name="Spacer" type="Control" parent="Control/VBoxContainer" unique_id=222051018]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="PlayButton" type="Button" parent="Control/VBoxContainer" unique_id=1126703842]
+layout_mode = 2
+text = "Play"
+
+[node name="ControlsLabel" type="Label" parent="Control/VBoxContainer" unique_id=279101089]
+layout_mode = 2
+text = "← → move   ↑ rotate CW   Z rotate CCW   Space hard drop   P pause
+"

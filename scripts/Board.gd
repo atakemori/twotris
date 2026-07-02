@@ -83,6 +83,8 @@ func _process(delta: float) -> void:
 
 # Drop the active piece by one row; lock if it can't move.
 func _gravity_step() -> void:
+	if _active_piece == null:
+		return
 	if _try_move(Vector2i(0, 1)):
 		queue_redraw()
 	else:

@@ -1,0 +1,61 @@
+[gd_scene format=3 uid="uid://imbwse04piwb"]
+
+[ext_resource type="Script" uid="uid://bgh2oyw5bp262" path="res://scripts/EndScreen.gd" id="1_qfurf"]
+
+[node name="EndScreen" type="CanvasLayer" unique_id=2058341300]
+script = ExtResource("1_qfurf")
+
+[node name="Control" type="Control" parent="." unique_id=1572737464]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Control" unique_id=1596588456]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="GameOverLabel" type="Label" parent="Control/VBoxContainer" unique_id=534149489]
+layout_mode = 2
+text = "GAME OVER"
+
+[node name="LeftScoreLabel" type="Label" parent="Control/VBoxContainer" unique_id=942280856]
+layout_mode = 2
+text = "Left board: 0"
+
+[node name="RightScoreLabel" type="Label" parent="Control/VBoxContainer" unique_id=1436616839]
+layout_mode = 2
+text = "Right board: 0"
+
+[node name="TotalLabel" type="Label" parent="Control/VBoxContainer" unique_id=1456860698]
+layout_mode = 2
+text = "Total: 0"
+
+[node name="WinnerLabel" type="Label" parent="Control/VBoxContainer" unique_id=567291171]
+layout_mode = 2
+text = "-"
+
+[node name="Spacer" type="Control" parent="Control/VBoxContainer" unique_id=770598379]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+
+[node name="PlayAgainButton" type="Button" parent="Control/VBoxContainer" unique_id=306614413]
+layout_mode = 2
+text = "Play Again"
+
+[node name="MenuButton" type="Button" parent="Control/VBoxContainer" unique_id=1086923873]
+layout_mode = 2
+text = "Main Menu"
