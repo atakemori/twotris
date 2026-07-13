@@ -24,12 +24,12 @@ extends CanvasLayer
 # InputRouter is a child Node of GameScreen (not in the visual tree).
 # ---------------------------------------------------------------------------
 
-@onready var board_left:   Board  = $Control/HBoxContainer/BoardLeft
-@onready var board_right:  Board  = $Control/HBoxContainer/BoardRight
+@onready var board_left:   Board  = $Control/BoardL
+@onready var board_right:  Board  = $Control/BoardR
 @onready var input_router: InputRouter = $InputRouter
 
-@onready var left_score_label:  Label   = $Control/HBoxContainer/LeftPanel/LeftScoreLabel
-@onready var right_score_label: Label   = $Control/HBoxContainer/RightPanel/RightScoreLabel
+@onready var left_score_label:  Label   = $Control/LeftPanel/LeftScoreLabel
+@onready var right_score_label: Label   = $Control/RightPanel/RightScoreLabel
 
 @onready var pause_overlay: ColorRect = $Control/PauseOverlay
 
@@ -42,6 +42,9 @@ var _game_active: bool = false
 const LINE_POINTS := [0, 100, 300, 700, 1500]
 
 func _ready() -> void:
+	print("GameScreen _ready() called")
+	_position_boards()
+	
 	# Wire the InputRouter to both boards
 	input_router.board_left  = board_left
 	input_router.board_right = board_right
@@ -55,6 +58,7 @@ func _ready() -> void:
 
 # Called by ScreenManager.go_to("GameScreen") — resets and starts a fresh game.
 func init(_data: Dictionary = {}) -> void:
+	print("GameScreen.init() called")
 	_score_left  = 0
 	_score_right = 0
 	_paused      = false
@@ -112,3 +116,23 @@ func _on_game_over() -> void:
 		"score_left":  _score_left,
 		"score_right": _score_right,
 	})
+
+func _position_boards() -> void:
+	# Board dimensions: 10 cols × 20 rows × 28px = 280 × 560
+	var board_w := board_left.cols * board_left.cell_size    # 280
+	var board_h := board_left.rows * board_left.cell_size    # 560
+	var gap     := 40
+	var total_w := board_w * 2 + gap
+	var screen_w: float = get_viewport().get_visible_rect().size.x
+	var screen_h: float = get_viewport().get_visible_rect().size.y
+
+	var start_x := (screen_w - total_w) / 2.0
+	var start_y := (screen_h - board_h) / 2.0
+
+	board_left.position  = Vector2(start_x, start_y)
+	board_right.position = Vector2(start_x + board_w + gap, start_y)
+	print(board_left.position, board_right.position)
+
+	# Score labels above each board
+	left_score_label.position  = Vector2(start_x, start_y - 30)
+	right_score_label.position = Vector2(start_x + board_w + gap, start_y - 30)

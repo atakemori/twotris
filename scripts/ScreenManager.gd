@@ -27,6 +27,7 @@ func register(name: String, node: Node) -> void:
 
 # Switch to the named screen, optionally passing data to an init() method.
 func go_to(screen_name: String, data: Dictionary = {}) -> void:
+	print("ScreenManager.go_to: ", screen_name)
 	if screen_name == _current:
 		return
 
