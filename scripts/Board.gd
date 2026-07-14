@@ -34,6 +34,8 @@ signal game_over
 @export var grid_color:   Color = Color(0.18, 0.18, 0.25)
 @export var border_color: Color = Color(0.55, 0.55, 0.70)
 
+@export var show_drop_guide: bool = true
+
 # ── Internal state ───────────────────────────────────────────────────────────
 
 # _grid[row][col] = Color if locked, else Color(0,0,0,0)
@@ -231,6 +233,15 @@ func _ghost_pos() -> Vector2i:
 	while _fits(_active_piece, ghost + Vector2i(0, 1)):
 		ghost.y += 1
 	return ghost
+	
+# Returns the lowest grid row currently occupied by the active piece
+func _piece_bottom_row() -> int:
+	var lowest := -999
+	for o in _active_piece.offsets:
+		var r := _active_pos.y + o.y
+		if r > lowest:
+			lowest = r
+	return lowest
 
 # ── Drawing ──────────────────────────────────────────────────────────────────
 
@@ -262,6 +273,48 @@ func _draw() -> void:
 			var gr := ghost.y + o.y
 			if gr >= 0:
 				_draw_cell_ghost(gc, gr, _active_piece.color)
+				
+	# Drop guide — dotted line + distance counter
+	if show_drop_guide and _alive and _active_piece:
+		var ghost := _ghost_pos()
+		var piece_bottom := _piece_bottom_row()
+		var distance := ghost.y - _active_pos.y   # tiles until landing
+
+		if distance > 0:
+			# Find the x centre of the active piece in pixels
+			var piece_center_x := 0.0
+			for o in _active_piece.offsets:
+				piece_center_x += (_active_pos.x + o.x) * cell_size + cell_size * 0.5
+			piece_center_x /= _active_piece.offsets.size()
+
+			# Bottom edge of the active piece in pixels
+			var line_top_y := float((piece_bottom + 1) * cell_size)
+			# Top edge of ghost piece in pixels
+			var line_bot_y := float(ghost.y * cell_size)
+
+			# Draw dotted line segment by segment
+			var dot_len  := 4.0
+			var gap_len  := 6.0
+			var guide_color := Color(_active_piece.color.r,
+									 _active_piece.color.g,
+									 _active_piece.color.b, 0.5)
+			var y := line_top_y
+			while y < line_bot_y:
+				var y_end :float = min(y + dot_len, line_bot_y)
+				draw_line(Vector2(piece_center_x, y),
+						  Vector2(piece_center_x, y_end),
+						  guide_color, 1.5)
+				y += dot_len + gap_len
+
+			# Distance label just below the active piece
+			var label_pos := Vector2(piece_center_x + 4.0, line_top_y + 2.0)
+			draw_string(ThemeDB.fallback_font,
+						label_pos,
+						str(distance),
+						HORIZONTAL_ALIGNMENT_LEFT,
+						-1,
+						12,
+						guide_color)
 
 	# Active piece
 	if _active_piece:
