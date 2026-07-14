@@ -37,28 +37,30 @@ static func make(type: Piece.Type) -> Piece:
 
 	match type:
 		Piece.Type.I:
-			# Horizontal: pivot at left
-			offsets = [Vector2i(0,0), Vector2i(1,0), Vector2i(2,0)]
+			# [ ][ ][ ]
+			# [■][■][■]
+			# [ ][ ][ ]
+			offsets = [Vector2i(-1,0), Vector2i(0,0), Vector2i(1,0)]
 		Piece.Type.L:
-			# Pivot top-left
-			# [■][ ]
-			# [■][■]
-			offsets = [Vector2i(0,0), Vector2i(0,1), Vector2i(1,1)]
+			# [ ][■][ ]
+			# [ ][■][■]
+			# [ ][ ][ ]
+			offsets = [Vector2i(0,0), Vector2i(0,-1), Vector2i(1,0)]
 		Piece.Type.J:
-			# Pivot top-right
-			# [ ][■]
-			# [■][■]
-			offsets = [Vector2i(1,0), Vector2i(0,1), Vector2i(1,1)]
-		#Piece.Type.T:
-			## Pivot top-left
-			## [■][■]
-			## [ ][■]
-			#offsets = [Vector2i(0,0), Vector2i(1,0), Vector2i(1,1)]
-		#Piece.Type.O:
-			## Pivot top-left
-			## [■][■]
-			## [■][ ]
-			#offsets = [Vector2i(0,0), Vector2i(1,0), Vector2i(0,1)]
+			# [ ][■][ ]
+			# [■][■][ ]
+			# [ ][ ][ ]
+			offsets = [Vector2i(0,0), Vector2i(0,-1), Vector2i(-1,0)]
+		Piece.Type.T:
+			# [ ][ ][ ]
+			# [■][■][ ]
+			# [ ][■][ ]
+			offsets = [Vector2i(0,0), Vector2i(-1,0), Vector2i(0,1)]
+		Piece.Type.O:
+			# [ ][ ][ ]
+			# [ ][■][■]
+			# [ ][■][ ]
+			offsets = [Vector2i(0,0), Vector2i(1,0), Vector2i(0,1)]
 
 	return Piece.new(type, color, offsets)
 
@@ -66,10 +68,12 @@ static func make(type: Piece.Type) -> Piece:
 static func random(rng: RandomNumberGenerator) -> Piece:
 	var all_types := [
 		Piece.Type.I,
+		Piece.Type.I,
+		Piece.Type.I,
 		Piece.Type.L,
 		Piece.Type.J,
-		#Piece.Type.T,
-		#Piece.Type.O,
+		Piece.Type.T,
+		Piece.Type.O,
 	]
 	var idx := rng.randi_range(0, all_types.size() - 1)
 	return make(all_types[idx])
