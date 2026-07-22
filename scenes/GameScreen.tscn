@@ -23,6 +23,7 @@ metadata/_custom_type_script = "uid://dm5pu0hfcfo5n"
 [node name="BoardR" type="Node2D" parent="Control" unique_id=574012232]
 position = Vector2(509, 299)
 script = ExtResource("2_osnef")
+is_left_board = false
 metadata/_custom_type_script = "uid://dm5pu0hfcfo5n"
 
 [node name="LeftPanel" type="VBoxContainer" parent="Control" unique_id=2035837146]

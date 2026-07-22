@@ -25,6 +25,7 @@ signal game_over
 @export var cols:       int   = 10
 @export var rows:       int   = 20
 @export var cell_size:  int   = 28     # pixels per cell
+@export var is_left_board: bool = true
 
 # ── Timing ──────────────────────────────────────────────────────────────────
 @export var gravity_interval: float = 0.6   # seconds between automatic drops
@@ -242,6 +243,8 @@ func _piece_bottom_row() -> int:
 		if r > lowest:
 			lowest = r
 	return lowest
+	
+
 
 # ── Drawing ──────────────────────────────────────────────────────────────────
 
@@ -305,16 +308,26 @@ func _draw() -> void:
 						  Vector2(piece_center_x, y_end),
 						  guide_color, 1.5)
 				y += dot_len + gap_len
-
-			# Distance label just below the active piece
-			var label_pos := Vector2(piece_center_x + 4.0, line_top_y + 2.0)
-			draw_string(ThemeDB.fallback_font,
+				
+			var font_size : int = max(28, 52 - distance * 6)
+				
+			# Draw label of countdown until bottom
+			var label_x := -40.0 if is_left_board else board_w + 10.0
+			var label_align := HORIZONTAL_ALIGNMENT_LEFT if is_left_board else HORIZONTAL_ALIGNMENT_RIGHT
+			var label_pos := Vector2(label_x, font_size + 10)
+			#draw_string(ThemeDB.fallback_font,
+						#label_pos,
+						#str(distance),
+						#label_align,
+						#-1,
+						#12,
+						#guide_color)
+			draw_string_outline(ThemeDB.fallback_font,
 						label_pos,
 						str(distance),
-						HORIZONTAL_ALIGNMENT_LEFT,
+						label_align,
 						-1,
-						12,
-						guide_color)
+						font_size)
 
 	# Active piece
 	if _active_piece:
