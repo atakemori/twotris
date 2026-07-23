@@ -88,5 +88,7 @@ grow_horizontal = 2
 grow_vertical = 2
 text = "PAUSED - press ESC or P to resume"
 
+[node name="AudioListener2D" type="AudioListener2D" parent="Control" unique_id=206204875]
+
 [node name="InputRouter" type="Node" parent="." unique_id=764145884]
 script = ExtResource("1_gj13t")

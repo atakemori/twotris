@@ -90,7 +90,7 @@ func _process(delta: float) -> void:
 func _gravity_step() -> void:
 	if _active_piece == null:
 		return
-	if _try_move(Vector2i(0, 1)):
+	if _try_move(Vector2i(0, 1), true):
 		queue_redraw()
 	else:
 		_lock_piece()
@@ -129,10 +129,12 @@ func rotate_ccw() -> void:
 # ── Movement helpers ─────────────────────────────────────────────────────────
 
 # Attempts to shift _active_pos by delta. Returns true on success.
-func _try_move(delta: Vector2i) -> bool:
+func _try_move(delta: Vector2i, gravity_step: bool = false) -> bool:
 	var new_pos := _active_pos + delta
 	if _fits(_active_piece, new_pos):
 		_active_pos = new_pos
+		if not gravity_step:
+			SFXPlayer.play("move", global_position)
 		return true
 	return false
 
@@ -146,6 +148,10 @@ func _try_rotate(clockwise: bool) -> void:
 		if _fits(rotated, _active_pos + kick):
 			_active_piece = rotated
 			_active_pos   = _active_pos + kick
+			if clockwise:
+				SFXPlayer.play("left_rotate", global_position)
+			else:
+				SFXPlayer.play("right_rotate", global_position)
 			queue_redraw()
 			return
 
@@ -175,9 +181,12 @@ func _lock_piece() -> void:
 		if r >= 0 and r < rows and c >= 0 and c < cols:
 			_grid[r][c] = _active_piece.color
 
+	SFXPlayer.play("lock", global_position)
+
 	var cleared := _check_clears()
 	if cleared > 0:
 		lines_cleared.emit(cleared)
+		SFXPlayer.play("line_clear", global_position)
 
 	_spawn_next()
 
@@ -219,6 +228,7 @@ func _spawn_next(row_offset: int = 0) -> void:
 	if not _fits(_active_piece, _active_pos):
 		_alive = false
 		game_over.emit()
+		SFXPlayer.play("game_over", global_position)
 		queue_redraw()
 		return
 

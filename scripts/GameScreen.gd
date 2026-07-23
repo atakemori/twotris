@@ -33,6 +33,8 @@ extends CanvasLayer
 
 @onready var pause_overlay: ColorRect = $Control/PauseOverlay
 
+@onready var _audio_listener: AudioListener2D = $Control/AudioListener2D
+
 var _score_left:  int = 0
 var _score_right: int = 0
 var _paused:      bool = false
@@ -71,6 +73,10 @@ func init(_data: Dictionary = {}) -> void:
 	var base_seed := randi()
 	board_left.start(base_seed)
 	board_right.start(base_seed + 99999)   # Different seed = different piece sequence
+
+	var viewport_size := get_viewport().get_visible_rect().size
+	_audio_listener.global_position = viewport_size / 2
+	_audio_listener.make_current()
 
 # ── Scoring ───────────────────────────────────────────────────────────────────
 
