@@ -26,6 +26,8 @@ signal game_over
 @export var rows:       int   = 20
 @export var cell_size:  int   = 28     # pixels per cell
 @export var is_left_board: bool = true
+@export var start_with_offset: bool = false
+const LEFT_BOARD_START_OFFSET: int = 9
 
 # ── Timing ──────────────────────────────────────────────────────────────────
 @export var gravity_interval: float = 0.6   # seconds between automatic drops
@@ -70,7 +72,7 @@ func start(seed_value: int) -> void:
 	_gravity_timer = 0.0
 	_init_grid()
 	_next_piece = PieceSet.random(_rng)
-	_spawn_next()
+	_spawn_next(LEFT_BOARD_START_OFFSET if is_left_board else 0)
 	queue_redraw()
 
 # ── Update loop ──────────────────────────────────────────────────────────────
@@ -207,12 +209,12 @@ func _remove_row(r: int) -> void:
 
 # ── Piece spawning ───────────────────────────────────────────────────────────
 
-func _spawn_next() -> void:
+func _spawn_next(row_offset: int = 0) -> void:
 	_active_piece = _next_piece
 	_next_piece   = PieceSet.random(_rng)
 
 	# Center horizontally, start one row above the top
-	_active_pos = Vector2i((cols / 2) - 1, -1)
+	_active_pos = Vector2i((cols / 2) - 1, -1 + row_offset)
 
 	if not _fits(_active_piece, _active_pos):
 		_alive = false
@@ -315,13 +317,6 @@ func _draw() -> void:
 			var label_x := -40.0 if is_left_board else board_w + 10.0
 			var label_align := HORIZONTAL_ALIGNMENT_LEFT if is_left_board else HORIZONTAL_ALIGNMENT_RIGHT
 			var label_pos := Vector2(label_x, font_size + 10)
-			#draw_string(ThemeDB.fallback_font,
-						#label_pos,
-						#str(distance),
-						#label_align,
-						#-1,
-						#12,
-						#guide_color)
 			draw_string_outline(ThemeDB.fallback_font,
 						label_pos,
 						str(distance),
