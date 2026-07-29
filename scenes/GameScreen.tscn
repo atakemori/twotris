@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://def1xtvwxa5rm" path="res://scripts/InputRouter.gd" id="1_gj13t"]
 [ext_resource type="Script" uid="uid://nr7qncabo7o1" path="res://scripts/GameScreen.gd" id="1_osnef"]
+[ext_resource type="PackedScene" uid="uid://dbaau0i0sbt6g" path="res://scenes/ScoreBar.tscn" id="2_i1jb3"]
 [ext_resource type="Script" uid="uid://dm5pu0hfcfo5n" path="res://scripts/Board.gd" id="2_osnef"]
 
 [node name="GameScreen" type="CanvasLayer" unique_id=1696644829]
@@ -14,6 +15,11 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="ScoreBar" parent="Control" unique_id=1674746658 instance=ExtResource("2_i1jb3")]
+layout_mode = 0
+offset_right = 32.0
+offset_bottom = 500.0
 
 [node name="BoardL" type="Node2D" parent="Control" unique_id=1448358456]
 position = Vector2(509, 299)

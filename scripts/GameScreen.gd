@@ -27,6 +27,7 @@ extends CanvasLayer
 @onready var board_left:   Board  = $Control/BoardL
 @onready var board_right:  Board  = $Control/BoardR
 @onready var input_router: InputRouter = $InputRouter
+@onready var score_bar: ScoreBar = $Control/ScoreBar
 
 @onready var left_score_label:  Label   = $Control/LeftPanel/LeftScoreLabel
 @onready var right_score_label: Label   = $Control/RightPanel/RightScoreLabel
@@ -40,12 +41,17 @@ var _score_right: int = 0
 var _paused:      bool = false
 var _game_active: bool = false
 
+const SCORE_BAR_WIDTH: float = 28.0
+const SCORE_BAR_MARGIN: float = 30.0
+
 # Points awarded per number of lines cleared in a single drop
 const LINE_POINTS := [0, 100, 300, 700, 1500]
 
 func _ready() -> void:
 	print("GameScreen _ready() called")
-	_position_boards()
+	call_deferred("_position_boards")
+	#get_viewport().size_changed.connect(_position_boards)
+	#_position_boards()
 	
 	# Wire the InputRouter to both boards
 	input_router.board_left  = board_left
@@ -96,6 +102,8 @@ func _points_for(lines: int) -> int:
 func _update_score_labels() -> void:
 	left_score_label.text  = "L: %d" % _score_left
 	right_score_label.text = "R: %d" % _score_right
+	
+	score_bar.set_score(_score_left + _score_right)
 
 # ── Pause ─────────────────────────────────────────────────────────────────────
 
@@ -142,3 +150,11 @@ func _position_boards() -> void:
 	# Score labels above each board
 	left_score_label.position  = Vector2(start_x, start_y - 30)
 	right_score_label.position = Vector2(start_x + board_w + gap, start_y - 30)
+	
+	# Place the shared score bar to the left of everything
+	score_bar.position = Vector2(
+		start_x - SCORE_BAR_MARGIN - SCORE_BAR_WIDTH,
+		start_y
+	)
+	score_bar.size = Vector2(SCORE_BAR_WIDTH, board_h * 1)
+	score_bar.set_score(_score_left + _score_right)

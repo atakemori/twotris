@@ -30,7 +30,7 @@ signal game_over
 const LEFT_BOARD_START_OFFSET: int = 9
 
 # ── Timing ──────────────────────────────────────────────────────────────────
-@export var gravity_interval: float = 0.6   # seconds between automatic drops
+@export var gravity_interval: float = 0.8   # seconds between automatic drops
 
 # ── Cosmetics ───────────────────────────────────────────────────────────────
 @export var bg_color:     Color = Color(0.08, 0.08, 0.12)
