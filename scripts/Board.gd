@@ -187,7 +187,14 @@ func _lock_piece() -> void:
 
 	SFXPlayer.play("lock", global_position)
 	
-	_locking_particles.global_position = _lowest_locking_position()  # see note below
+	var lock_location := _lowest_locking_position()
+	
+	#Change the shape of the particle emitter.
+	var mat: ParticleProcessMaterial = _locking_particles.process_material
+	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	mat.emission_box_extents = Vector3(lock_location["width"] / 2.0, 2.0, 0.0)
+	
+	_locking_particles.global_position = lock_location["position"]  # see note below
 	_locking_particles.modulate = _active_piece.color.lerp(Color(.5, .5, .5), .25) # slightly muted version of piece color
 	_locking_particles.restart()  # resets and re-emits from the start
 	_locking_particles.emitting = true
@@ -196,32 +203,35 @@ func _lock_piece() -> void:
 	if cleared > 0:
 		lines_cleared.emit(cleared)
 		SFXPlayer.play("line_clear", global_position)
-		
 
 	_spawn_next()
 
-func _lowest_locking_position() -> Vector2:
-	var max_row := -INF
-	for cell: Vector2i in _active_piece.offsets:  # array of Vector2i local offsets
-		max_row = max(max_row, cell.y)
+func _lowest_locking_position() -> Dictionary:
+	var max_row: int = _active_piece.offsets[0].y
+	for o in _active_piece.offsets:
+		max_row = max(max_row, o.y)
 
-	# Gather all cells that share that lowest row (in case the piece is wider than 1 tile there)
-	var bottom_cells: Array[Vector2i] = []
-	for cell in _active_piece.offsets:
-		if cell.y == max_row:
-			bottom_cells.append(cell)
-		
-	# Average their x to get a horizontal center point across the bottom row
-	var avg_x := 0.0
-	for cell in bottom_cells:
-		avg_x += cell.x
-	avg_x /= bottom_cells.size()
+	var bottom_offsets: Array[Vector2i] = []
+	for o in _active_piece.offsets:
+		if o.y == max_row:
+			bottom_offsets.append(o)
 
+	var min_x := bottom_offsets[0].x
+	var max_x := bottom_offsets[0].x
+	for o in bottom_offsets:
+		min_x = min(min_x, o.x)
+		max_x = max(max_x, o.x)
+
+	var avg_x := float(min_x + max_x) / 2.0
 	var grid_pos := Vector2(_active_pos.x + avg_x, _active_pos.y + max_row)
-	var top_of_lowest_cell := global_position + grid_pos * cell_size
-	
-	# Offset down by one cell height to emit from the bottom
-	return top_of_lowest_cell + Vector2(0, cell_size)
+	var pixel_pos := global_position + grid_pos * cell_size
+	pixel_pos.y += cell_size
+
+	# Width spans from min_x to max_x (inclusive), so add 1 cell for the span itself
+	var width_in_cells := (max_x - min_x) + 1
+	var pixel_width := width_in_cells * cell_size
+
+	return {"position": pixel_pos, "width": pixel_width}
 
 
 func _check_clears() -> int:
