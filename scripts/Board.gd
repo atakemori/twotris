@@ -188,6 +188,7 @@ func _lock_piece() -> void:
 	SFXPlayer.play("lock", global_position)
 	
 	_locking_particles.global_position = _lowest_locking_position()  # see note below
+	_locking_particles.modulate = _active_piece.color.lerp(Color(.5, .5, .5), .25) # slightly muted version of piece color
 	_locking_particles.restart()  # resets and re-emits from the start
 	_locking_particles.emitting = true
 
@@ -217,8 +218,10 @@ func _lowest_locking_position() -> Vector2:
 	avg_x /= bottom_cells.size()
 
 	var grid_pos := Vector2(_active_pos.x + avg_x, _active_pos.y + max_row)
-	print(global_position + grid_pos * cell_size)
-	return global_position + grid_pos * cell_size
+	var top_of_lowest_cell := global_position + grid_pos * cell_size
+	
+	# Offset down by one cell height to emit from the bottom
+	return top_of_lowest_cell + Vector2(0, cell_size)
 
 
 func _check_clears() -> int:
