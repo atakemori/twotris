@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://def1xtvwxa5rm" path="res://scripts/InputRouter.gd" id="1_gj13t"]
 [ext_resource type="Script" uid="uid://nr7qncabo7o1" path="res://scripts/GameScreen.gd" id="1_osnef"]
 [ext_resource type="PackedScene" uid="uid://dbaau0i0sbt6g" path="res://scenes/ScoreBar.tscn" id="2_i1jb3"]
-[ext_resource type="Script" uid="uid://dm5pu0hfcfo5n" path="res://scripts/Board.gd" id="2_osnef"]
+[ext_resource type="PackedScene" uid="uid://ceubc3rmk42gl" path="res://scenes/Board.tscn" id="3_i1jb3"]
 
 [node name="GameScreen" type="CanvasLayer" unique_id=1696644829]
 script = ExtResource("1_osnef")
@@ -21,16 +21,10 @@ layout_mode = 0
 offset_right = 32.0
 offset_bottom = 500.0
 
-[node name="BoardL" type="Node2D" parent="Control" unique_id=1448358456]
-position = Vector2(509, 299)
-script = ExtResource("2_osnef")
-metadata/_custom_type_script = "uid://dm5pu0hfcfo5n"
+[node name="BoardL" parent="Control" unique_id=2095429057 instance=ExtResource("3_i1jb3")]
 
-[node name="BoardR" type="Node2D" parent="Control" unique_id=574012232]
-position = Vector2(509, 299)
-script = ExtResource("2_osnef")
+[node name="BoardR" parent="Control" unique_id=1067947667 instance=ExtResource("3_i1jb3")]
 is_left_board = false
-metadata/_custom_type_script = "uid://dm5pu0hfcfo5n"
 
 [node name="LeftPanel" type="VBoxContainer" parent="Control" unique_id=2035837146]
 layout_mode = 0
