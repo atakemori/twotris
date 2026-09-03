@@ -206,6 +206,11 @@ func _lock_piece() -> void:
 
 	_spawn_next()
 
+## Computes the world-space position and pixel width of the locked piece's
+## bottom edge, for positioning/sizing the lock particle burst.
+## Returns a Dictionary with:
+##   "position": Vector2 — world position of the bottom-edge midpoint
+##   "width": float — pixel width spanning the piece's bottom-row cells
 func _lowest_locking_position() -> Dictionary:
 	var max_row: int = _active_piece.offsets[0].y
 	for o in _active_piece.offsets:
