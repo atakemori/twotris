@@ -39,6 +39,8 @@ const LEFT_BOARD_START_OFFSET: int = 9
 
 @export var show_drop_guide: bool = true
 
+@onready var _locking_particles: GPUParticles2D = $LockingParticles
+
 # ── Internal state ───────────────────────────────────────────────────────────
 
 # _grid[row][col] = Color if locked, else Color(0,0,0,0)
@@ -56,6 +58,8 @@ var _alive:           bool  = true
 
 func _ready() -> void:
 	_init_grid()
+	print("LockingParticles found: ", _locking_particles)
+	print("Board Left children: ", get_children())
 
 func _init_grid() -> void:
 	_grid = []
@@ -182,13 +186,40 @@ func _lock_piece() -> void:
 			_grid[r][c] = _active_piece.color
 
 	SFXPlayer.play("lock", global_position)
+	
+	_locking_particles.global_position = _lowest_locking_position()  # see note below
+	_locking_particles.restart()  # resets and re-emits from the start
+	_locking_particles.emitting = true
 
 	var cleared := _check_clears()
 	if cleared > 0:
 		lines_cleared.emit(cleared)
 		SFXPlayer.play("line_clear", global_position)
+		
 
 	_spawn_next()
+
+func _lowest_locking_position() -> Vector2:
+	var max_row := -INF
+	for cell: Vector2i in _active_piece.offsets:  # array of Vector2i local offsets
+		max_row = max(max_row, cell.y)
+
+	# Gather all cells that share that lowest row (in case the piece is wider than 1 tile there)
+	var bottom_cells: Array[Vector2i] = []
+	for cell in _active_piece.offsets:
+		if cell.y == max_row:
+			bottom_cells.append(cell)
+		
+	# Average their x to get a horizontal center point across the bottom row
+	var avg_x := 0.0
+	for cell in bottom_cells:
+		avg_x += cell.x
+	avg_x /= bottom_cells.size()
+
+	var grid_pos := Vector2(_active_pos.x + avg_x, _active_pos.y + max_row)
+	print(global_position + grid_pos * cell_size)
+	return global_position + grid_pos * cell_size
+
 
 func _check_clears() -> int:
 	var cleared := 0

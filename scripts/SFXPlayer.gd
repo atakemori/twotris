@@ -30,6 +30,6 @@ func play(sound_name: String, world_position: Vector2, volume_db: float = 0.0) -
 	_next_index = (_next_index + 1) % POOL_SIZE
 
 	player.stream = SOUNDS[sound_name]
-	player.volume_db = volume_db
+	player.volume_db = volume_db - 20
 	player.global_position = world_position + Vector2(200, 0) # adding like half a board width temp fix
 	player.play()

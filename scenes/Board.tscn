@@ -1,6 +1,33 @@
 [gd_scene format=3 uid="uid://ceubc3rmk42gl"]
 
 [ext_resource type="Script" uid="uid://dm5pu0hfcfo5n" path="res://scripts/Board.gd" id="1_bw3vb"]
+[ext_resource type="Texture2D" uid="uid://oq0u5ck5c5uk" path="res://textures/particle_texture.png" id="2_hs2ul"]
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_66b1s"]
+particle_flag_disable_z = true
+particle_flag_damping_as_friction = true
+emission_shape = 3
+emission_box_extents = Vector3(1, 1, 1)
+direction = Vector3(0, 1, 0)
+spread = 88.903
+initial_velocity_min = 66.18
+initial_velocity_max = 171.79
+gravity = Vector3(0, -80, 0)
+damping_min = 1.0
+damping_max = 4.0
+scale_min = 0.049999997
+scale_max = 0.19999999
 
 [node name="Board Left" type="Node2D" unique_id=2095429057]
 script = ExtResource("1_bw3vb")
+
+[node name="LockingParticles" type="GPUParticles2D" parent="." unique_id=1007206370]
+emitting = false
+amount = 20
+texture = ExtResource("2_hs2ul")
+lifetime = 0.45
+one_shot = true
+explosiveness = 1.0
+randomness = 0.11
+fixed_fps = 60
+process_material = SubResource("ParticleProcessMaterial_66b1s")
