@@ -73,7 +73,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_both("soft_drop")
 
 	if event.is_action_pressed("hard_drop"):
-		_both("hard_drop")
+		_hard_drop_lowest_piece()
 
 	# ── Rotation ─────────────────────────────────────────────────────────────
 	if event.is_action_pressed("rotate_cw"):
@@ -93,6 +93,22 @@ func _shift(direction: int) -> void:
 		_both("move_left")
 	else:
 		_both("move_right")
+
+## Grid rows increase downward, so the piece with the larger bottom-row value
+## is visually lower. If both pieces share a row, the left board wins the tie.
+func _hard_drop_lowest_piece() -> void:
+	var left_has_piece := board_left and board_left.has_active_piece()
+	var right_has_piece := board_right and board_right.has_active_piece()
+
+	if left_has_piece and right_has_piece:
+		if board_left.get_active_piece_bottom_row() >= board_right.get_active_piece_bottom_row():
+			board_left.hard_drop()
+		else:
+			board_right.hard_drop()
+	elif left_has_piece:
+		board_left.hard_drop()
+	elif right_has_piece:
+		board_right.hard_drop()
 
 # Calls the named method on both boards if they are assigned.
 func _both(method: StringName) -> void:

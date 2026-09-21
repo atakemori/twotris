@@ -20,6 +20,7 @@ extends Node2D
 
 signal lines_cleared(count: int)
 signal game_over
+signal hard_drop_completed(board: Board)
 
 # ── Layout ──────────────────────────────────────────────────────────────────
 @export var cols:       int   = 10
@@ -126,6 +127,7 @@ func hard_drop() -> void:
 	while _try_move(Vector2i(0, 1)):
 		pass
 	_lock_piece()
+	hard_drop_completed.emit(self)
 
 func rotate_cw() -> void:
 	if not _can_control_active_piece(): return
@@ -284,6 +286,7 @@ func _remove_row(r: int) -> void:
 # ── Piece spawning ───────────────────────────────────────────────────────────
 
 func spawn_next(row_offset: int = 0) -> void:
+	_gravity_timer = 0.0
 	_active_piece = _next_piece
 	_next_piece   = PieceSet.random(_rng)
 
@@ -318,8 +321,11 @@ func _ghost_pos() -> Vector2i:
 		ghost.y += 1
 	return ghost
 	
-# Returns the lowest grid row currently occupied by the active piece
-func _piece_bottom_row() -> int:
+# Returns the lowest grid row currently occupied by the active piece.
+# Rows increase downward, so a higher return value means a lower visual position.
+func get_active_piece_bottom_row() -> int:
+	if _active_piece == null:
+		return -1
 	var lowest := -999
 	for o in _active_piece.offsets:
 		var r := _active_pos.y + o.y
@@ -363,7 +369,7 @@ func _draw() -> void:
 	# Drop guide — dotted line + distance counter
 	if show_drop_guide and _alive and _active_piece:
 		var ghost := _ghost_pos()
-		var piece_bottom := _piece_bottom_row()
+		var piece_bottom := get_active_piece_bottom_row()
 		var distance := ghost.y - _active_pos.y   # tiles until landing
 
 		if distance > 0:
