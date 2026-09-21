@@ -96,7 +96,7 @@ text = "PAUSED - press ESC or P to resume"
 
 [node name="DropScheduler" type="Node" parent="Control" unique_id=56658514 node_paths=PackedStringArray("left_board", "right_board")]
 script = ExtResource("4_xpdqc")
-interval_seconds = 3.0
+interval_seconds = 1.0
 left_board = NodePath("../BoardL")
 right_board = NodePath("../BoardR")
 

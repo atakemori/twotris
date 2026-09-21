@@ -220,6 +220,9 @@ func _lock_piece() -> void:
 		SFXPlayer.play("line_clear", global_position)
 
 	_active_piece = null
+	# This board is custom-drawn. Locking changes both the grid and active-piece
+	# state, so redraw now even when the scheduler will not spawn another piece yet.
+	queue_redraw()
 
 	if !listen_for_drop:
 		spawn_next()

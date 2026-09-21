@@ -66,8 +66,6 @@ func _ready() -> void:
 	board_right.lines_cleared.connect(_on_right_lines_cleared)
 	board_left.game_over.connect(_on_game_over)
 	board_right.game_over.connect(_on_game_over)
-	board_left.hard_drop_completed.connect(_on_hard_drop_completed)
-	board_right.hard_drop_completed.connect(_on_hard_drop_completed)
 	_drop_scheduler.drop_requested.connect(_on_drop_requested)
 
 # Called by ScreenManager.go_to("GameScreen") — resets and starts a fresh game.
@@ -95,12 +93,6 @@ func init(_data: Dictionary = {}) -> void:
 func _on_drop_requested(board: Board) -> void:
 	# Retain the condition here so an accidental duplicate signal cannot replace
 	# a piece that is still falling.
-	if _game_active and not board.has_active_piece():
-		board.spawn_next()
-
-func _on_hard_drop_completed(board: Board) -> void:
-	# A hard drop is an intentional player action, so it gets a fresh piece
-	# immediately. Gravity locks still wait for their normal scheduler window.
 	if _game_active and not board.has_active_piece():
 		board.spawn_next()
 
