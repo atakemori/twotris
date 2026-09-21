@@ -36,6 +36,9 @@ extends CanvasLayer
 
 @onready var _audio_listener: AudioListener2D = $Control/AudioListener2D
 
+@onready var _drop_scheduler: DropScheduler = $Control/DropScheduler
+@onready var _drop_rhythm_indicator: DropRhythmIndicator = $Control/DropRhythmIndicator
+
 var _score_left:  int = 0
 var _score_right: int = 0
 var _paused:      bool = false
@@ -52,7 +55,7 @@ func _ready() -> void:
 	call_deferred("_position_boards")
 	#get_viewport().size_changed.connect(_position_boards)
 	#_position_boards()
-	
+
 	# Wire the InputRouter to both boards
 	input_router.board_left  = board_left
 	input_router.board_right = board_right
@@ -63,6 +66,7 @@ func _ready() -> void:
 	board_right.lines_cleared.connect(_on_right_lines_cleared)
 	board_left.game_over.connect(_on_game_over)
 	board_right.game_over.connect(_on_game_over)
+	_drop_scheduler.drop_requested.connect(_on_drop_requested)
 
 # Called by ScreenManager.go_to("GameScreen") — resets and starts a fresh game.
 func init(_data: Dictionary = {}) -> void:
@@ -83,6 +87,14 @@ func init(_data: Dictionary = {}) -> void:
 	var viewport_size := get_viewport().get_visible_rect().size
 	_audio_listener.global_position = viewport_size / 2
 	_audio_listener.make_current()
+
+	_drop_scheduler.begin()
+
+func _on_drop_requested(board: Board) -> void:
+	# Retain the condition here so an accidental duplicate signal cannot replace
+	# a piece that is still falling.
+	if _game_active and not board.has_active_piece():
+		board.spawn_next()
 
 # ── Scoring ───────────────────────────────────────────────────────────────────
 
@@ -121,6 +133,7 @@ func _on_game_over() -> void:
 	if not _game_active:
 		return
 	_game_active = false
+	_drop_scheduler.stop()
 	get_tree().paused = false   # Make sure tree isn't stuck paused
 
 	# Short delay so the player sees the game-over board state before the screen switches
@@ -145,6 +158,7 @@ func _position_boards() -> void:
 
 	board_left.position  = Vector2(start_x, start_y)
 	board_right.position = Vector2(start_x + board_w + gap, start_y)
+	_drop_rhythm_indicator.position = Vector2(start_x + board_w, start_y + board_h * 0.5 - _drop_rhythm_indicator.size.y * 0.5)
 	print(board_left.position, board_right.position)
 
 	# Score labels above each board

@@ -4,6 +4,8 @@
 [ext_resource type="Script" uid="uid://nr7qncabo7o1" path="res://scripts/GameScreen.gd" id="1_osnef"]
 [ext_resource type="PackedScene" uid="uid://dbaau0i0sbt6g" path="res://scenes/ScoreBar.tscn" id="2_i1jb3"]
 [ext_resource type="PackedScene" uid="uid://ceubc3rmk42gl" path="res://scenes/Board.tscn" id="3_i1jb3"]
+[ext_resource type="Script" uid="uid://ix178hi56nnu" path="res://scripts/DropScheduler.gd" id="4_xpdqc"]
+[ext_resource type="Script" path="res://scripts/DropRhythmIndicator.gd" id="5_rhythm"]
 
 [node name="GameScreen" type="CanvasLayer" unique_id=1696644829]
 script = ExtResource("1_osnef")
@@ -22,9 +24,11 @@ offset_right = 32.0
 offset_bottom = 500.0
 
 [node name="BoardL" parent="Control" unique_id=2095429057 instance=ExtResource("3_i1jb3")]
+listen_for_drop = true
 
 [node name="BoardR" parent="Control" unique_id=1067947667 instance=ExtResource("3_i1jb3")]
 is_left_board = false
+listen_for_drop = true
 
 [node name="LeftPanel" type="VBoxContainer" parent="Control" unique_id=2035837146]
 layout_mode = 0
@@ -89,6 +93,20 @@ grow_vertical = 2
 text = "PAUSED - press ESC or P to resume"
 
 [node name="AudioListener2D" type="AudioListener2D" parent="Control" unique_id=206204875]
+
+[node name="DropScheduler" type="Node" parent="Control" unique_id=56658514 node_paths=PackedStringArray("left_board", "right_board")]
+script = ExtResource("4_xpdqc")
+interval_seconds = 3.0
+left_board = NodePath("../BoardL")
+right_board = NodePath("../BoardR")
+
+[node name="DropRhythmIndicator" type="Control" parent="Control" unique_id=2018928119 node_paths=PackedStringArray("scheduler")]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 80.0
+mouse_filter = 2
+script = ExtResource("5_rhythm")
+scheduler = NodePath("../DropScheduler")
 
 [node name="InputRouter" type="Node" parent="." unique_id=764145884]
 script = ExtResource("1_gj13t")

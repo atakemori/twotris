@@ -31,6 +31,7 @@ const LEFT_BOARD_START_OFFSET: int = 9
 
 # ── Timing ──────────────────────────────────────────────────────────────────
 @export var gravity_interval: float = 0.8   # seconds between automatic drops
+@export var listen_for_drop: bool = false
 
 # ── Cosmetics ───────────────────────────────────────────────────────────────
 @export var bg_color:     Color = Color(0.08, 0.08, 0.12)
@@ -75,8 +76,12 @@ func start(seed_value: int) -> void:
 	_alive = true
 	_gravity_timer = 0.0
 	_init_grid()
+	# A reused board must not retain the last round's falling piece while it
+	# waits for the scheduler.
+	_active_piece = null
 	_next_piece = PieceSet.random(_rng)
-	_spawn_next(LEFT_BOARD_START_OFFSET if is_left_board else 0)
+	if !listen_for_drop:
+		spawn_next(LEFT_BOARD_START_OFFSET if is_left_board else 0)
 	queue_redraw()
 
 # ── Update loop ──────────────────────────────────────────────────────────────
@@ -102,38 +107,40 @@ func _gravity_step() -> void:
 # ── Public input API (called by InputRouter) ─────────────────────────────────
 
 func move_left() -> void:
-	if not _alive: return
+	if not _can_control_active_piece(): return
 	if _try_move(Vector2i(-1, 0)):
 		queue_redraw()
 
 func move_right() -> void:
-	if not _alive: return
+	if not _can_control_active_piece(): return
 	if _try_move(Vector2i(1, 0)):
 		queue_redraw()
 
 func soft_drop() -> void:
-	if not _alive: return
+	if not _can_control_active_piece(): return
 	_gravity_timer = 0.0
 	_gravity_step()
 
 func hard_drop() -> void:
-	if not _alive: return
+	if not _can_control_active_piece(): return
 	while _try_move(Vector2i(0, 1)):
 		pass
 	_lock_piece()
 
 func rotate_cw() -> void:
-	if not _alive: return
+	if not _can_control_active_piece(): return
 	_try_rotate(true)
 
 func rotate_ccw() -> void:
-	if not _alive: return
+	if not _can_control_active_piece(): return
 	_try_rotate(false)
 
 # ── Movement helpers ─────────────────────────────────────────────────────────
 
 # Attempts to shift _active_pos by delta. Returns true on success.
 func _try_move(delta: Vector2i, gravity_step: bool = false) -> bool:
+	if _active_piece == null:
+		return false
 	var new_pos := _active_pos + delta
 	if _fits(_active_piece, new_pos):
 		_active_pos = new_pos
@@ -144,6 +151,8 @@ func _try_move(delta: Vector2i, gravity_step: bool = false) -> bool:
 
 # Attempts to rotate the active piece; uses simple wall-kick offsets.
 func _try_rotate(clockwise: bool) -> void:
+	if _active_piece == null:
+		return
 	var rotated := _active_piece.rotated_cw() if clockwise else _active_piece.rotated_ccw()
 
 	# Wall-kick candidates: no kick, nudge left, nudge right
@@ -178,6 +187,10 @@ func _fits(piece: Piece, pos: Vector2i) -> bool:
 # ── Locking & line clears ────────────────────────────────────────────────────
 
 func _lock_piece() -> void:
+	# Input is broadcast to both boards, including one waiting for its next
+	# scheduled piece. Empty boards must never be locked.
+	if _active_piece == null:
+		return
 	# Write active piece into the grid
 	for o in _active_piece.offsets:
 		var c := _active_pos.x + o.x
@@ -186,9 +199,9 @@ func _lock_piece() -> void:
 			_grid[r][c] = _active_piece.color
 
 	SFXPlayer.play("lock", global_position)
-	
+
 	var lock_location := _lowest_locking_position()
-	
+
 	#Change the shape of the particle emitter.
 	var mat: ParticleProcessMaterial = _locking_particles.process_material
 	mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
@@ -204,7 +217,10 @@ func _lock_piece() -> void:
 		lines_cleared.emit(cleared)
 		SFXPlayer.play("line_clear", global_position)
 
-	_spawn_next()
+	_active_piece = null
+
+	if !listen_for_drop:
+		spawn_next()
 
 ## Computes the world-space position and pixel width of the locked piece's
 ## bottom edge, for positioning/sizing the lock particle burst.
@@ -267,7 +283,7 @@ func _remove_row(r: int) -> void:
 
 # ── Piece spawning ───────────────────────────────────────────────────────────
 
-func _spawn_next(row_offset: int = 0) -> void:
+func spawn_next(row_offset: int = 0) -> void:
 	_active_piece = _next_piece
 	_next_piece   = PieceSet.random(_rng)
 
@@ -282,6 +298,12 @@ func _spawn_next(row_offset: int = 0) -> void:
 		return
 
 	queue_redraw()
+
+func has_active_piece() -> bool:
+	return _active_piece != null
+
+func _can_control_active_piece() -> bool:
+	return _alive and _active_piece != null
 
 # ── Preview helper ────────────────────────────────────────────────────────────
 
