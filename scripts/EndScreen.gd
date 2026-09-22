@@ -48,10 +48,11 @@ func init(data: Dictionary = {}) -> void:
 		elif score == high_score:
 			tied = true
 
-	left_score_label.text = "Board 1:      %d" % int(scores[0] if scores.size() > 0 else 0)
-	right_score_label.text = "Board 2:      %d" % int(scores[1] if scores.size() > 1 else 0)
-	if scores.size() > 2:
-		right_score_label.text += "\nBoard 3:      %d" % int(scores[2])
+	var score_lines: Array[String] = []
+	for i in scores.size():
+		score_lines.append("Board %d:      %d" % [i + 1, int(scores[i])])
+	left_score_label.text = "\n".join(score_lines)
+	right_score_label.text = ""
 	total_label.text = "Total:        %d" % total
 
 	if tied:

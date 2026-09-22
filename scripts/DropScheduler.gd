@@ -40,11 +40,19 @@ func stop() -> void:
 	_timer.stop()
 
 func set_boards(new_boards: Array[Board]) -> void:
+	var current_board: Board = null
+	if not boards.is_empty() and _current_board_index >= 0 and _current_board_index < boards.size():
+		current_board = boards[_current_board_index]
+
 	boards = []
 	for board in new_boards:
 		if board:
 			boards.append(board)
-	_current_board_index = 0
+
+	if current_board and boards.has(current_board):
+		_current_board_index = boards.find(current_board)
+	else:
+		_current_board_index = clampi(_current_board_index, 0, max(boards.size() - 1, 0))
 
 func _on_timer_timeout() -> void:
 	if boards.is_empty():
