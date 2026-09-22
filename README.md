@@ -19,6 +19,7 @@ the configured main scene, `scenes/Main.tscn`.
 | Rotate both active pieces clockwise | X |
 | Rotate both active pieces counter-clockwise | Z |
 | Pause | Escape or P |
+| Switch piece sets | Tab |
 
 ## Scene hierarchy
 
@@ -86,7 +87,7 @@ DropScheduler ──drop_requested────┘
 
 ## Implemented gameplay
 
-- Two independently randomized 10×20 boards using triomino-style pieces.
+- Switch between the original 3-cell pieces and the seven standard Tetris tetrominoes with Tab. The new set takes effect on the next spawned piece.
 - Shared movement, rotation, and soft-drop controls.
 - Alternating one-second spawn scheduler: a scheduled board gets a new piece
   only when it has no active piece.

@@ -40,6 +40,7 @@ const LEFT_BOARD_START_OFFSET: int = 9
 @export var border_color: Color = Color(0.55, 0.55, 0.70)
 
 @export var show_drop_guide: bool = true
+@export var piece_set: PieceSet.Set = PieceSet.Set.TETROMINO
 
 @onready var _locking_particles: GPUParticles2D = $LockingParticles
 
@@ -81,7 +82,7 @@ func start(seed_value: int) -> void:
 	# A reused board must not retain the last round's falling piece while it
 	# waits for the scheduler.
 	_active_piece = null
-	_next_piece = PieceSet.random(_rng)
+	_next_piece = PieceSet.random(_rng, piece_set)
 	if !listen_for_drop:
 		spawn_next(LEFT_BOARD_START_OFFSET if is_left_board else 0)
 	queue_redraw()
@@ -197,6 +198,17 @@ func _lock_piece() -> void:
 	# scheduled piece. Empty boards must never be locked.
 	if _active_piece == null:
 		return
+	# A piece that can no longer descend while any of its cells are still above
+	# the visible grid has topped out. Previously those cells were skipped below,
+	# allowing play to continue after the stack reached the ceiling.
+	for o in _active_piece.offsets:
+		if _active_pos.y + o.y < 0:
+			_active_piece = null
+			_alive = false
+			game_over.emit()
+			SFXPlayer.play("game_over", global_position)
+			queue_redraw()
+			return
 	# Write active piece into the grid
 	for o in _active_piece.offsets:
 		var c := _active_pos.x + o.x
@@ -294,7 +306,7 @@ func _remove_row(r: int) -> void:
 
 func spawn_next(row_offset: int = 0) -> void:
 	_active_piece = _next_piece
-	_next_piece   = PieceSet.random(_rng)
+	_next_piece   = PieceSet.random(_rng, piece_set)
 
 	# Center horizontally, start one row above the top
 	_active_pos = Vector2i((cols / 2) - 1, -1 + row_offset)
@@ -310,6 +322,13 @@ func spawn_next(row_offset: int = 0) -> void:
 
 func has_active_piece() -> bool:
 	return _active_piece != null
+
+## Changes the pool used for the next piece onward; the falling piece is kept.
+func set_piece_set(new_piece_set: PieceSet.Set) -> void:
+	if piece_set == new_piece_set:
+		return
+	piece_set = new_piece_set
+	_next_piece = PieceSet.random(_rng, piece_set)
 
 func set_hard_drop_target(is_target: bool) -> void:
 	if _hard_drop_target == is_target:

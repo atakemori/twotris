@@ -31,6 +31,7 @@ extends CanvasLayer
 
 @onready var left_score_label:  Label   = $Control/LeftPanel/LeftScoreLabel
 @onready var right_score_label: Label   = $Control/RightPanel/RightScoreLabel
+@onready var piece_set_label: Label = $Control/PieceSetLabel
 
 @onready var pause_overlay: ColorRect = $Control/PauseOverlay
 
@@ -43,6 +44,7 @@ var _score_left:  int = 0
 var _score_right: int = 0
 var _paused:      bool = false
 var _game_active: bool = false
+var _piece_set: PieceSet.Set = PieceSet.Set.TETROMINO
 
 const SCORE_BAR_WIDTH: float = 28.0
 const SCORE_BAR_MARGIN: float = 30.0
@@ -60,6 +62,7 @@ func _ready() -> void:
 	input_router.board_left  = board_left
 	input_router.board_right = board_right
 	input_router.pause_requested.connect(_on_pause_requested)
+	input_router.piece_set_toggle_requested.connect(_on_piece_set_toggle_requested)
 
 	# Wire board signals
 	board_left.lines_cleared.connect(_on_left_lines_cleared)
@@ -77,6 +80,7 @@ func init(_data: Dictionary = {}) -> void:
 	_game_active = true
 
 	_update_score_labels()
+	_update_piece_set_label()
 	pause_overlay.visible = false
 
 	# Seed each board independently with a random int
@@ -126,6 +130,18 @@ func _on_pause_requested() -> void:
 	get_tree().paused   = _paused
 	pause_overlay.visible = _paused
 
+func _on_piece_set_toggle_requested() -> void:
+	if not _game_active:
+		return
+	_piece_set = PieceSet.Set.TRIOMINO if _piece_set == PieceSet.Set.TETROMINO else PieceSet.Set.TETROMINO
+	board_left.set_piece_set(_piece_set)
+	board_right.set_piece_set(_piece_set)
+	_update_piece_set_label()
+
+func _update_piece_set_label() -> void:
+	var set_name := "4-CELL TETROMINOES" if _piece_set == PieceSet.Set.TETROMINO else "3-CELL PIECES"
+	piece_set_label.text = "PIECES: %s  [TAB TO SWITCH]" % set_name
+
 # ── Game over ─────────────────────────────────────────────────────────────────
 
 # Either board ending ends the round (called once is enough — guard with _game_active).
@@ -164,6 +180,7 @@ func _position_boards() -> void:
 	# Score labels above each board
 	left_score_label.position  = Vector2(start_x, start_y - 30)
 	right_score_label.position = Vector2(start_x + board_w + gap, start_y - 30)
+	piece_set_label.position = Vector2(start_x, start_y - 58)
 	
 	# Place the shared score bar to the left of everything
 	score_bar.position = Vector2(
