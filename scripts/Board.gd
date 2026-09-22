@@ -462,14 +462,25 @@ func _draw() -> void:
 	# Border
 	draw_rect(Rect2(0, 0, board_w, board_h), border_color, false, 2.0)
 	if _hard_drop_target and _active_piece:
-		var pulse := (sin(Time.get_ticks_msec() * 0.008) + 1.0) * 0.5
-		var glow_color := _active_piece.color
-		glow_color.a = 0.45 + pulse * 0.45
-		draw_rect(Rect2(3, 3, board_w - 6, board_h - 6), glow_color, false, 3.0 + pulse * 2.0)
+		_draw_border_glow(board_w, board_h, 9.0)
 
 	# Game-over overlay
 	if not _alive:
 		draw_rect(Rect2(0, 0, board_w, board_h), Color(0, 0, 0, 0.6))
+		
+func _draw_border_glow(board_w: int, board_h: int, thickness: int) -> void:
+	#var pulse := (sin(Time.get_ticks_msec() * 0.004) + 1.0) * 0.5
+	var pulse := (sin(Time.get_ticks_msec() / 1000.0 * TAU * 1.2) + 1.0) * 0.5
+	var glow_color := _active_piece.color
+	#var glow_color := Color.WHITE
+	glow_color.a = 0.45 + pulse * 0.45
+	# glows inward
+	#draw_rect(Rect2(thickness, thickness, board_w - 2*thickness, board_h - 2*thickness), glow_color, false, thickness + pulse * 2.0)
+	# glows outwards
+	var thi = thickness/3.0
+	draw_rect(Rect2(-thi, -thi, board_w + 2*thi, board_h + 2*thi), glow_color, false, thickness)
+	# redraw border in white for emphasis
+	draw_rect(Rect2(0, 0, board_w, board_h), Color.WHITE, false, 2.0)
 
 func _draw_cell(c: int, r: int, color: Color) -> void:
 	var rect := Rect2(c * cell_size + 1, r * cell_size + 1, cell_size - 2, cell_size - 2)
