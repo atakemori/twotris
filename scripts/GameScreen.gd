@@ -32,8 +32,8 @@ extends CanvasLayer
 @onready var input_router: InputRouter = $InputRouter
 @onready var score_bar: ScoreBar = $Control/ScoreBar
 
-@onready var left_score_label:  Label   = $Control/LeftPanel/LeftScoreLabel
-@onready var right_score_label: Label   = $Control/RightPanel/RightScoreLabel
+@onready var left_panel: Control = $Control/LeftPanel
+@onready var right_panel: Control = $Control/RightPanel
 @onready var piece_set_label: Label = $Control/PieceSetLabel
 
 @onready var pause_overlay: ColorRect = $Control/PauseOverlay
@@ -65,6 +65,9 @@ func _ready() -> void:
 	print("GameScreen _ready() called")
 	if board_scene == null:
 		board_scene = preload("res://scenes/Board.tscn")
+
+	left_panel.visible = false
+	right_panel.visible = false
 
 	_register_board(board_left)
 	_register_board(board_right)
@@ -259,9 +262,10 @@ func _get_board_layout() -> Dictionary:
 
 func _make_score_label() -> Label:
 	var label := Label.new()
-	label.name = "ScoreLabel%d" % (_score_labels.size() + 1)
+	label.name = "Board%dScoreLabel" % (_score_labels.size() + 1)
 	label.layout_mode = 0
 	$Control.add_child(label)
+	pause_overlay.move_to_front()
 	return label
 
 func _set_canvas_item_alpha(item: CanvasItem, alpha: float) -> void:
@@ -283,7 +287,7 @@ func _register_board(board: Board, position_now: bool = true) -> void:
 
 	_boards.append(board)
 	_scores.append(0)
-	_score_labels.append(_score_label_for_index(board_index))
+	_score_labels.append(_make_score_label())
 
 	board.lines_cleared.connect(_on_board_lines_cleared.bind(board_index))
 	board.game_over.connect(_on_game_over)
@@ -293,13 +297,6 @@ func _register_board(board: Board, position_now: bool = true) -> void:
 	_update_score_labels()
 	if position_now:
 		_position_boards()
-
-func _score_label_for_index(board_index: int) -> Label:
-	if board_index == 0:
-		return left_score_label
-	if board_index == 1:
-		return right_score_label
-	return _make_score_label()
 
 func _check_board_unlocks() -> void:
 	if board_score_interval <= 0:
@@ -322,8 +319,7 @@ func _reset_to_starting_boards() -> void:
 		var board: Board = _boards.pop_back()
 		_scores.pop_back()
 		var label: Label = _score_labels.pop_back()
-		if label != left_score_label and label != right_score_label:
-			label.queue_free()
+		label.queue_free()
 		board.queue_free()
 
 	for i in _boards.size():
