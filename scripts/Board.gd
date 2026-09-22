@@ -49,7 +49,7 @@ const LEFT_BOARD_START_OFFSET: int = 9
 var _grid: Array = []
 
 var _active_piece:    Piece      = null
-var _active_pos:      Vector2i   = Vector2i.ZERO  # top-left of bounding box in grid coords
+var _active_pos:      Vector2i   = Vector2i.ZERO  # rotation pivot (offset 0,0) in grid coords
 var _next_piece:      Piece      = null
 
 var _rng:             RandomNumberGenerator = RandomNumberGenerator.new()
@@ -344,6 +344,13 @@ func get_active_piece_bottom_row() -> int:
 		if r > lowest:
 			lowest = r
 	return lowest
+
+## The position of offset (0, 0), which is the piece's rotation pivot.
+## Unlike its bottom edge, this is unchanged by rotation.
+func get_active_piece_pivot_row() -> int:
+	if _active_piece == null:
+		return -1
+	return _active_pos.y
 	
 
 

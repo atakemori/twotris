@@ -96,15 +96,16 @@ func _shift(direction: int) -> void:
 	else:
 		_both("move_right")
 
-## Grid rows increase downward, so the piece with the larger bottom-row value
-## is visually lower. If both pieces share a row, the left board wins the tie.
+## Grid rows increase downward, so the piece with the larger pivot-row value
+## has fallen farther. The pivot does not move when the piece rotates.
+## If both pieces share a row, the left board wins the tie.
 func _hard_drop_lowest_piece() -> void:
 	_update_hard_drop_target()
 	var left_has_piece := board_left and board_left.has_active_piece()
 	var right_has_piece := board_right and board_right.has_active_piece()
 
 	if left_has_piece and right_has_piece:
-		if board_left.get_active_piece_bottom_row() >= board_right.get_active_piece_bottom_row():
+		if board_left.get_active_piece_pivot_row() >= board_right.get_active_piece_pivot_row():
 			board_left.hard_drop()
 		else:
 			board_right.hard_drop()
@@ -125,7 +126,7 @@ func _update_hard_drop_target() -> void:
 	var right_is_target := false
 
 	if left_has_piece and right_has_piece:
-		left_is_target = board_left.get_active_piece_bottom_row() >= board_right.get_active_piece_bottom_row()
+		left_is_target = board_left.get_active_piece_pivot_row() >= board_right.get_active_piece_pivot_row()
 		right_is_target = not left_is_target
 	elif left_has_piece:
 		left_is_target = true
