@@ -33,6 +33,8 @@ var _das_timer:     float = 0.0
 var _das_active:    bool  = false
 
 func _process(delta: float) -> void:
+	_update_hard_drop_target()
+
 	if _das_direction == 0:
 		return
 
@@ -97,6 +99,7 @@ func _shift(direction: int) -> void:
 ## Grid rows increase downward, so the piece with the larger bottom-row value
 ## is visually lower. If both pieces share a row, the left board wins the tie.
 func _hard_drop_lowest_piece() -> void:
+	_update_hard_drop_target()
 	var left_has_piece := board_left and board_left.has_active_piece()
 	var right_has_piece := board_right and board_right.has_active_piece()
 
@@ -109,6 +112,28 @@ func _hard_drop_lowest_piece() -> void:
 		board_left.hard_drop()
 	elif right_has_piece:
 		board_right.hard_drop()
+
+	_update_hard_drop_target()
+
+func _update_hard_drop_target() -> void:
+	if not board_left or not board_right:
+		return
+
+	var left_has_piece := board_left.has_active_piece()
+	var right_has_piece := board_right.has_active_piece()
+	var left_is_target := false
+	var right_is_target := false
+
+	if left_has_piece and right_has_piece:
+		left_is_target = board_left.get_active_piece_bottom_row() >= board_right.get_active_piece_bottom_row()
+		right_is_target = not left_is_target
+	elif left_has_piece:
+		left_is_target = true
+	elif right_has_piece:
+		right_is_target = true
+
+	board_left.set_hard_drop_target(left_is_target)
+	board_right.set_hard_drop_target(right_is_target)
 
 # Calls the named method on both boards if they are assigned.
 func _both(method: StringName) -> void:

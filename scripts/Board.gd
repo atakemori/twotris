@@ -55,6 +55,7 @@ var _next_piece:      Piece      = null
 var _rng:             RandomNumberGenerator = RandomNumberGenerator.new()
 var _gravity_timer:   float = 0.0
 var _alive:           bool  = true
+var _hard_drop_target: bool = false
 
 # ── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -90,6 +91,9 @@ func start(seed_value: int) -> void:
 func _process(delta: float) -> void:
 	if not _alive:
 		return
+
+	if _hard_drop_target:
+		queue_redraw()
 
 	_gravity_timer += delta
 	if _gravity_timer >= gravity_interval:
@@ -289,7 +293,6 @@ func _remove_row(r: int) -> void:
 # ── Piece spawning ───────────────────────────────────────────────────────────
 
 func spawn_next(row_offset: int = 0) -> void:
-	_gravity_timer = 0.0
 	_active_piece = _next_piece
 	_next_piece   = PieceSet.random(_rng)
 
@@ -307,6 +310,12 @@ func spawn_next(row_offset: int = 0) -> void:
 
 func has_active_piece() -> bool:
 	return _active_piece != null
+
+func set_hard_drop_target(is_target: bool) -> void:
+	if _hard_drop_target == is_target:
+		return
+	_hard_drop_target = is_target
+	queue_redraw()
 
 func _can_control_active_piece() -> bool:
 	return _alive and _active_piece != null
@@ -424,6 +433,11 @@ func _draw() -> void:
 
 	# Border
 	draw_rect(Rect2(0, 0, board_w, board_h), border_color, false, 2.0)
+	if _hard_drop_target and _active_piece:
+		var pulse := (sin(Time.get_ticks_msec() * 0.008) + 1.0) * 0.5
+		var glow_color := _active_piece.color
+		glow_color.a = 0.45 + pulse * 0.45
+		draw_rect(Rect2(3, 3, board_w - 6, board_h - 6), glow_color, false, 3.0 + pulse * 2.0)
 
 	# Game-over overlay
 	if not _alive:
