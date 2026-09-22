@@ -31,7 +31,13 @@ text = "PIECES: 4-CELL TETROMINOES  [TAB TO SWITCH]"
 [node name="BoardL" parent="Control" unique_id=2095429057 instance=ExtResource("3_i1jb3")]
 listen_for_drop = true
 
+[node name="BoardC" parent="Control" unique_id=1674368887 instance=ExtResource("3_i1jb3")]
+board_index = 1
+is_left_board = false
+listen_for_drop = true
+
 [node name="BoardR" parent="Control" unique_id=1067947667 instance=ExtResource("3_i1jb3")]
+board_index = 2
 is_left_board = false
 listen_for_drop = true
 

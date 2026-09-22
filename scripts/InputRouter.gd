@@ -26,8 +26,7 @@ signal piece_set_toggle_requested
 @export var das_delay:  float = 0.17   # seconds before auto-repeat kicks in
 @export var das_repeat: float = 0.05   # seconds between repeats once DAS is active
 
-var board_left:  Board = null
-var board_right: Board = null
+var boards: Array[Board] = []
 
 var _das_direction: int   = 0     # -1 left, 0 none, 1 right
 var _das_timer:     float = 0.0
@@ -73,17 +72,17 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# ── Vertical ─────────────────────────────────────────────────────────────
 	if event.is_action_pressed("soft_drop", true):   # allow echo
-		_both("soft_drop")
+		_all_boards("soft_drop")
 
 	if event.is_action_pressed("hard_drop"):
 		_hard_drop_lowest_piece()
 
 	# ── Rotation ─────────────────────────────────────────────────────────────
 	if event.is_action_pressed("rotate_cw"):
-		_both("rotate_cw")
+		_all_boards("rotate_cw")
 
 	if event.is_action_pressed("rotate_ccw"):
-		_both("rotate_ccw")
+		_all_boards("rotate_ccw")
 
 	# ── Meta ──────────────────────────────────────────────────────────────────
 	if event.is_action_pressed("pause"):
@@ -96,53 +95,43 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _shift(direction: int) -> void:
 	if direction < 0:
-		_both("move_left")
+		_all_boards("move_left")
 	else:
-		_both("move_right")
+		_all_boards("move_right")
 
 ## Grid rows increase downward, so the piece with the larger pivot-row value
 ## has fallen farther. The pivot does not move when the piece rotates.
-## If both pieces share a row, the left board wins the tie.
+## If pieces share a row, the lowest board index wins the tie.
 func _hard_drop_lowest_piece() -> void:
 	_update_hard_drop_target()
-	var left_has_piece := board_left and board_left.has_active_piece()
-	var right_has_piece := board_right and board_right.has_active_piece()
-
-	if left_has_piece and right_has_piece:
-		if board_left.get_active_piece_pivot_row() >= board_right.get_active_piece_pivot_row():
-			board_left.hard_drop()
-		else:
-			board_right.hard_drop()
-	elif left_has_piece:
-		board_left.hard_drop()
-	elif right_has_piece:
-		board_right.hard_drop()
+	var target := _hard_drop_target_board()
+	if target:
+		target.hard_drop()
 
 	_update_hard_drop_target()
 
 func _update_hard_drop_target() -> void:
-	if not board_left or not board_right:
-		return
+	var target := _hard_drop_target_board()
+	for board in boards:
+		if board:
+			board.set_hard_drop_target(board == target)
 
-	var left_has_piece := board_left.has_active_piece()
-	var right_has_piece := board_right.has_active_piece()
-	var left_is_target := false
-	var right_is_target := false
+func _hard_drop_target_board() -> Board:
+	var target: Board = null
+	var target_row := -999999
 
-	if left_has_piece and right_has_piece:
-		left_is_target = board_left.get_active_piece_pivot_row() >= board_right.get_active_piece_pivot_row()
-		right_is_target = not left_is_target
-	elif left_has_piece:
-		left_is_target = true
-	elif right_has_piece:
-		right_is_target = true
+	for board in boards:
+		if not board or not board.has_active_piece():
+			continue
+		var row := board.get_active_piece_pivot_row()
+		if target == null or row > target_row:
+			target = board
+			target_row = row
 
-	board_left.set_hard_drop_target(left_is_target)
-	board_right.set_hard_drop_target(right_is_target)
+	return target
 
-# Calls the named method on both boards if they are assigned.
-func _both(method: StringName) -> void:
-	if board_left  and board_left.has_method(method):
-		board_left.call(method)
-	if board_right and board_right.has_method(method):
-		board_right.call(method)
+# Calls the named method on every assigned board.
+func _all_boards(method: StringName) -> void:
+	for board in boards:
+		if board and board.has_method(method):
+			board.call(method)

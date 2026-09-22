@@ -26,6 +26,7 @@ signal hard_drop_completed(board: Board)
 @export var cols:       int   = 10
 @export var rows:       int   = 20
 @export var cell_size:  int   = 28     # pixels per cell
+@export var board_index: int = 0
 @export var is_left_board: bool = true
 @export var start_with_offset: bool = false
 const LEFT_BOARD_START_OFFSET: int = 9
@@ -439,8 +440,9 @@ func _draw() -> void:
 			var font_size : int = max(28, 52 - distance * 6)
 				
 			# Draw label of countdown until bottom
-			var label_x := -40.0 if is_left_board else board_w + 10.0
-			var label_align := HORIZONTAL_ALIGNMENT_LEFT if is_left_board else HORIZONTAL_ALIGNMENT_RIGHT
+			var label_on_left := board_index == 0
+			var label_x := -40.0 if label_on_left else board_w + 10.0
+			var label_align := HORIZONTAL_ALIGNMENT_LEFT if label_on_left else HORIZONTAL_ALIGNMENT_RIGHT
 			var label_pos := Vector2(label_x, font_size + 10)
 			draw_string_outline(ThemeDB.fallback_font,
 						label_pos,
