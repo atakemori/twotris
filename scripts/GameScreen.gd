@@ -26,6 +26,7 @@ extends CanvasLayer
 
 @export var board_scene: PackedScene
 @export var board_score_interval: int = 1000
+@export var restore_saved_board_states: bool = false
 
 @onready var board_left:   Board  = $Control/BoardL
 @onready var board_right:  Board  = $Control/BoardR
@@ -69,6 +70,7 @@ const BOARD_SCORE_LABEL_GAP: float = 10.0
 
 # Points awarded per number of lines cleared in a single drop
 const LINE_POINTS := [0, 100, 300, 700, 1500]
+const BOARD_STATE_SAVE_PATH := "user://twotris_board_states.json"
 
 func _ready() -> void:
 	print("GameScreen _ready() called")
@@ -108,9 +110,12 @@ func init(_data: Dictionary = {}) -> void:
 	pause_overlay.visible = false
 
 	# Seed each board independently with a random int
-	var base_seed := randi()
-	for i in _boards.size():
-		_boards[i].start(base_seed + i * 99999)
+	if restore_saved_board_states and load_board_states():
+		pass
+	else:
+		var base_seed := randi()
+		for i in _boards.size():
+			_boards[i].start(base_seed + i * 99999)
 
 	var viewport_size := get_viewport().get_visible_rect().size
 	_audio_listener.global_position = viewport_size / 2
@@ -394,11 +399,63 @@ func _check_board_unlocks() -> void:
 func _add_board() -> void:
 	var board := board_scene.instantiate() as Board
 	board.name = "Board%d" % (_boards.size() + 1)
+	var junk_rng := RandomNumberGenerator.new()
+	junk_rng.seed = randi()
+	var average_height := 0.0
+	for existing_board in _boards:
+		average_height += existing_board.get_stack_height()
+	if not _boards.is_empty():
+		average_height /= float(_boards.size())
+	var junk_state := board.make_random_junk_state(roundi(average_height * 0.5), junk_rng)
 	$Control.add_child(board)
 	_register_board(board, false)
 	pause_overlay.move_to_front()
 	_position_boards(true, _boards.size() - 1)
-	board.start(randi())
+	board.start(randi(), junk_state)
+
+## Saves every board's locked grid and score to a JSON file for playtesting.
+## The optional path is exposed so tests can use a temporary location.
+func save_board_states(path: String = BOARD_STATE_SAVE_PATH) -> bool:
+	var board_states: Array = []
+	for i in _boards.size():
+		board_states.append({"grid": _boards[i].get_grid_state(), "score": _scores[i]})
+	var payload := {"piece_set": int(_piece_set), "boards": board_states}
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(JSON.stringify(payload))
+	return true
+
+## Loads a saved board layout, creating enough runtime boards to match it.
+## Call this after init or set restore_saved_board_states before the next init.
+func load_board_states(path: String = BOARD_STATE_SAVE_PATH) -> bool:
+	if not FileAccess.file_exists(path):
+		return false
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return false
+	var parsed = JSON.parse_string(file.get_as_text())
+	if not parsed is Dictionary or not parsed.has("boards"):
+		return false
+	var saved_boards: Array = parsed["boards"]
+	if saved_boards.is_empty():
+		return false
+	var saved_piece_set := int(parsed.get("piece_set", int(_piece_set)))
+	_piece_set = PieceSet.Set.TRIOMINO if saved_piece_set == int(PieceSet.Set.TRIOMINO) else PieceSet.Set.TETROMINO
+	_reset_to_starting_boards()
+	while _boards.size() < saved_boards.size():
+		_add_board()
+	for i in saved_boards.size():
+		var saved = saved_boards[i]
+		if not saved is Dictionary:
+			continue
+		_scores[i] = int(saved.get("score", 0))
+		_boards[i].piece_set = _piece_set
+		_boards[i].start(randi(), saved.get("grid", []))
+	_update_score_labels()
+	_update_piece_set_label()
+	_position_boards()
+	return true
 
 ## Restores a fresh round to the two scene-authored boards.
 ## Runtime boards and their generated score labels are removed; the remaining

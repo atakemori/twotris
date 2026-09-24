@@ -75,11 +75,13 @@ func _init_grid() -> void:
 		_grid.append(row)
 
 # Call this from GameScreen after both boards are ready, passing a unique seed.
-func start(seed_value: int) -> void:
+func start(seed_value: int, starting_grid: Array = []) -> void:
 	_rng.seed = seed_value
 	_alive = true
 	_gravity_timer = 0.0
 	_init_grid()
+	if not starting_grid.is_empty():
+		set_grid_state(starting_grid)
 	# A reused board must not retain the last round's falling piece while it
 	# waits for the scheduler.
 	_active_piece = null
@@ -87,6 +89,59 @@ func start(seed_value: int) -> void:
 	if !listen_for_drop:
 		spawn_next(LEFT_BOARD_START_OFFSET if is_left_board else 0)
 	queue_redraw()
+
+## Replaces the locked-cell grid with a validated saved or generated state.
+## Rows and columns outside this board's dimensions are ignored.
+func set_grid_state(state: Array) -> void:
+	_init_grid()
+	for r in range(mini(state.size(), rows)):
+		var saved_row = state[r]
+		if not saved_row is Array:
+			continue
+		for c in range(mini(saved_row.size(), cols)):
+			var value = saved_row[c]
+			if value is Color:
+				_grid[r][c] = value
+			elif value is String:
+				_grid[r][c] = Color(value)
+	queue_redraw()
+
+## Returns the locked grid as JSON-friendly color strings for playtest saves.
+func get_grid_state() -> Array:
+	var state: Array = []
+	for r in rows:
+		var saved_row: Array = []
+		for c in cols:
+			saved_row.append(_grid[r][c].to_html(true) if _grid[r][c].a > 0.0 else "")
+		state.append(saved_row)
+	return state
+
+## Returns the number of occupied rows measured upward from the bottom.
+func get_stack_height() -> int:
+	for r in rows:
+		for c in cols:
+			if _grid[r][c].a > 0.0:
+				return rows - r
+	return 0
+
+## Builds a simple randomized garbage state for a newly created board.
+## The bottom target_height rows are filled with colored blocks and holes.
+func make_random_junk_state(target_height: int, rng: RandomNumberGenerator) -> Array:
+	var state: Array = []
+	var colors: Array = PieceSet.COLORS.values()
+	var clamped_height := clampi(target_height, 0, maxi(rows - 1, 0))
+	for r in rows:
+		var saved_row: Array = []
+		for c in cols:
+			if r < rows - clamped_height and r >= 0:
+				saved_row.append("")
+			elif rng.randf() < 0.18:
+				saved_row.append("")
+			else:
+				var color: Color = colors[rng.randi_range(0, colors.size() - 1)]
+				saved_row.append(color.to_html(true))
+		state.append(saved_row)
+	return state
 
 # ── Update loop ──────────────────────────────────────────────────────────────
 
