@@ -10,6 +10,7 @@
 [node name="GameScreen" type="CanvasLayer" unique_id=1696644829]
 script = ExtResource("1_osnef")
 board_scene = ExtResource("3_i1jb3")
+board_score_interval = 500
 
 [node name="Control" type="Control" parent="." unique_id=854167541]
 layout_mode = 3

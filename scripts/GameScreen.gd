@@ -57,6 +57,15 @@ const SCORE_BAR_MARGIN: float = 30.0
 const BOARD_LAYOUT_TWEEN_SECONDS: float = 0.35
 const BOARD_ENTRY_TWEEN_SECONDS: float = 0.7
 const BOARD_ENTRY_OFFSET: Vector2 = Vector2(180, 0)
+const DEFAULT_BOARD_CELL_SIZE: int = 28
+const MAX_BOARD_ROWS: int = 2
+const BOARD_GAP: float = 40.0
+const BOARD_ROW_GAP: float = 44.0
+const BOARD_LAYOUT_MARGIN: float = 42.0
+const BOARD_LAYOUT_TOP_MARGIN: float = 64.0
+const BOARD_LAYOUT_BOTTOM_MARGIN: float = 34.0
+const BOARD_SCORE_LABEL_WIDTH: float = 58.0
+const BOARD_SCORE_LABEL_GAP: float = 10.0
 
 # Points awarded per number of lines cleared in a single drop
 const LINE_POINTS := [0, 100, 300, 700, 1500]
@@ -173,6 +182,11 @@ func _on_game_over() -> void:
 		"scores": _scores.duplicate(),
 	})
 
+## Applies the latest calculated board layout.
+## Boards redraw at an integer cell size instead of using Node2D scale, keeping
+## grid lines and custom drawing crisp. When a board has just been added,
+## entering_board_index gives that board a slower slide/fade entry while all
+## existing boards move in the same parallel tween.
 func _position_boards(animated: bool = false, entering_board_index: int = -1) -> void:
 	if _boards.is_empty():
 		return
@@ -180,8 +194,14 @@ func _position_boards(animated: bool = false, entering_board_index: int = -1) ->
 	var layout := _get_board_layout()
 	var board_positions: Array[Vector2] = layout["board_positions"]
 	var label_positions: Array[Vector2] = layout["label_positions"]
+	var board_cell_size: int = layout["board_cell_size"]
 	var score_bar_position: Vector2 = layout["score_bar_position"]
 	var score_bar_size: Vector2 = layout["score_bar_size"]
+
+	for board in _boards:
+		board.cell_size = board_cell_size
+		board.scale = Vector2.ONE
+		board.queue_redraw()
 
 	if _layout_tween:
 		_layout_tween.kill()
@@ -198,6 +218,8 @@ func _position_boards(animated: bool = false, entering_board_index: int = -1) ->
 				_layout_tween.tween_property(_boards[i], "modulate:a", 1.0, duration) \
 					.set_trans(Tween.TRANS_CUBIC) \
 					.set_ease(Tween.EASE_OUT)
+			else:
+				_set_canvas_item_alpha(_boards[i], 1.0)
 			_layout_tween.tween_property(_boards[i], "position", board_positions[i], duration) \
 				.set_trans(Tween.TRANS_CUBIC) \
 				.set_ease(Tween.EASE_OUT)
@@ -209,6 +231,8 @@ func _position_boards(animated: bool = false, entering_board_index: int = -1) ->
 				_layout_tween.tween_property(_score_labels[i], "modulate:a", 1.0, duration) \
 					.set_trans(Tween.TRANS_CUBIC) \
 					.set_ease(Tween.EASE_OUT)
+			else:
+				_set_canvas_item_alpha(_score_labels[i], 1.0)
 			_layout_tween.tween_property(_score_labels[i], "position", label_positions[i], duration) \
 				.set_trans(Tween.TRANS_CUBIC) \
 				.set_ease(Tween.EASE_OUT)
@@ -221,6 +245,7 @@ func _position_boards(animated: bool = false, entering_board_index: int = -1) ->
 			_set_canvas_item_alpha(_boards[i], 1.0)
 		for i in _score_labels.size():
 			_score_labels[i].position = label_positions[i]
+			_score_labels[i].size = Vector2(BOARD_SCORE_LABEL_WIDTH, 24)
 			_set_canvas_item_alpha(_score_labels[i], 1.0)
 		score_bar.position = score_bar_position
 
@@ -229,56 +254,113 @@ func _position_boards(animated: bool = false, entering_board_index: int = -1) ->
 	score_bar.size = score_bar_size
 	score_bar.set_score(_total_score())
 
+## Calculates a readable board layout for the current viewport.
+## Each slot reserves horizontal space for a score label to the left of its
+## board, then chooses an integer board cell size that fits every slot in at
+## most MAX_BOARD_ROWS rows.
 func _get_board_layout() -> Dictionary:
-	# Board dimensions: 10 cols × 20 rows × 28px = 280 × 560
-	var board_w := board_left.cols * board_left.cell_size    # 280
-	var board_h := board_left.rows * board_left.cell_size    # 560
-	var gap     := 40
-	var total_w := board_w * _boards.size() + gap * (_boards.size() - 1)
+	var board_w := float(board_left.cols * DEFAULT_BOARD_CELL_SIZE)
+	var board_h := float(board_left.rows * DEFAULT_BOARD_CELL_SIZE)
+	var slot_w := board_w + BOARD_SCORE_LABEL_WIDTH + BOARD_SCORE_LABEL_GAP
 	var screen_w: float = get_viewport().get_visible_rect().size.x
 	var screen_h: float = get_viewport().get_visible_rect().size.y
+	var available_w := screen_w - BOARD_LAYOUT_MARGIN * 2.0 - SCORE_BAR_WIDTH - SCORE_BAR_MARGIN
+	var available_h := screen_h - BOARD_LAYOUT_TOP_MARGIN - BOARD_LAYOUT_BOTTOM_MARGIN
+	var layout_grid := _best_board_grid(_boards.size(), slot_w, board_h, available_w, available_h)
+	var column_count: int = layout_grid["columns"]
+	var row_count: int = layout_grid["rows"]
+	var scale_factor: float = layout_grid["scale"]
+	var board_cell_size := maxi(1, floori(float(DEFAULT_BOARD_CELL_SIZE) * scale_factor))
+	var scaled_board_w := float(board_left.cols * board_cell_size)
+	var scaled_board_h := float(board_left.rows * board_cell_size)
+	var scaled_slot_w := scaled_board_w + BOARD_SCORE_LABEL_WIDTH + BOARD_SCORE_LABEL_GAP
+	var total_w := scaled_slot_w * float(column_count) + BOARD_GAP * float(column_count - 1)
+	var total_h := scaled_board_h * float(row_count) + BOARD_ROW_GAP * float(row_count - 1)
 
 	var start_x := (screen_w - total_w) / 2.0
-	var start_y := (screen_h - board_h) / 2.0
+	var start_y := BOARD_LAYOUT_TOP_MARGIN + maxf(0.0, (available_h - total_h) / 2.0)
 
 	var board_positions: Array[Vector2] = []
 	var label_positions: Array[Vector2] = []
 	for i in _boards.size():
-		var x := start_x + i * (board_w + gap)
-		board_positions.append(Vector2(x, start_y))
-		label_positions.append(Vector2(x, start_y - 30))
+		var col := i % column_count
+		var row := i / column_count
+		var slot_x := start_x + float(col) * (scaled_slot_w + BOARD_GAP)
+		var x := slot_x + BOARD_SCORE_LABEL_WIDTH + BOARD_SCORE_LABEL_GAP
+		var y := start_y + float(row) * (scaled_board_h + BOARD_ROW_GAP)
+		board_positions.append(Vector2(x, y))
+		label_positions.append(Vector2(slot_x, y + 4.0))
 
 	return {
 		"board_positions": board_positions,
 		"label_positions": label_positions,
-		"rhythm_indicator_position": Vector2(start_x + board_w, start_y + board_h * 0.00 - _drop_rhythm_indicator.size.y * 0.5),
+		"board_cell_size": board_cell_size,
+		"rhythm_indicator_position": Vector2(start_x + scaled_board_w, start_y - _drop_rhythm_indicator.size.y * 0.5),
 		"piece_set_label_position": Vector2(start_x, start_y - 58),
 		"score_bar_position": Vector2(
 		start_x - SCORE_BAR_MARGIN - SCORE_BAR_WIDTH,
 		start_y
 		),
-		"score_bar_size": Vector2(SCORE_BAR_WIDTH, board_h * 1),
+		"score_bar_size": Vector2(SCORE_BAR_WIDTH, total_h),
 	}
 
+## Finds the largest readable grid using at most MAX_BOARD_ROWS rows.
+## The returned scale is the largest uniform fit for the slot width and board
+## height. A score label is included in slot width but is not vertically scaled.
+func _best_board_grid(board_count: int, slot_w: float, board_h: float, available_w: float, available_h: float) -> Dictionary:
+	var best_columns := board_count
+	var best_rows := 1
+	var best_scale := 0.0
+
+	var min_columns := ceili(float(board_count) / float(MAX_BOARD_ROWS))
+	for columns in range(min_columns, board_count + 1):
+		var rows := ceili(float(board_count) / float(columns))
+		var width_scale := (available_w - BOARD_GAP * float(columns - 1)) / (slot_w * float(columns))
+		var height_scale := (available_h - BOARD_ROW_GAP * float(rows - 1)) / (board_h * float(rows))
+		var scale := minf(1.0, minf(width_scale, height_scale))
+
+		if scale > best_scale:
+			best_columns = columns
+			best_rows = rows
+			best_scale = scale
+
+	return {
+		"columns": best_columns,
+		"rows": best_rows,
+		"scale": maxf(best_scale, 0.1),
+	}
+
+## Creates the score label used for every board, including the two scene boards.
+## Keeping generated labels consistent avoids the old split between legacy
+## left/right panels and runtime-added boards.
 func _make_score_label() -> Label:
 	var label := Label.new()
 	label.name = "Board%dScoreLabel" % (_score_labels.size() + 1)
 	label.layout_mode = 0
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	label.size = Vector2(BOARD_SCORE_LABEL_WIDTH, 24)
 	$Control.add_child(label)
 	pause_overlay.move_to_front()
 	return label
 
+## Sets opacity without changing the existing color/modulate value.
 func _set_canvas_item_alpha(item: CanvasItem, alpha: float) -> void:
 	var color := item.modulate
 	color.a = alpha
 	item.modulate = color
 
+## Returns the shared total score used for the score bar and board unlocks.
 func _total_score() -> int:
 	var total := 0
 	for score in _scores:
 		total += score
 	return total
 
+## Adds a board to all shared game systems.
+## This wires scoring, input routing, scheduler participation, piece set, and a
+## standardized score label. position_now is false for runtime board additions
+## so the caller can apply an animated layout after registration.
 func _register_board(board: Board, position_now: bool = true) -> void:
 	var board_index := _boards.size()
 	board.board_index = board_index
@@ -298,13 +380,17 @@ func _register_board(board: Board, position_now: bool = true) -> void:
 	if position_now:
 		_position_boards()
 
+## Unlocks one additional board whenever total score reaches the next interval.
+## This intentionally adds at most one board per scoring event so an entry tween
+## cannot be interrupted by another newly-added board before it fades in.
 func _check_board_unlocks() -> void:
 	if board_score_interval <= 0:
 		return
-	while _total_score() >= _next_board_score_threshold:
+	if _total_score() >= _next_board_score_threshold:
 		_next_board_score_threshold += board_score_interval
 		_add_board()
 
+## Instantiates one new board and lets it enter from the right of its final slot.
 func _add_board() -> void:
 	var board := board_scene.instantiate() as Board
 	board.name = "Board%d" % (_boards.size() + 1)
@@ -314,6 +400,9 @@ func _add_board() -> void:
 	_position_boards(true, _boards.size() - 1)
 	board.start(randi())
 
+## Restores a fresh round to the two scene-authored boards.
+## Runtime boards and their generated score labels are removed; the remaining
+## boards keep the current piece-set choice and are re-registered with systems.
 func _reset_to_starting_boards() -> void:
 	while _boards.size() > 2:
 		var board: Board = _boards.pop_back()

@@ -468,7 +468,7 @@ func _draw() -> void:
 	if not _alive:
 		draw_rect(Rect2(0, 0, board_w, board_h), Color(0, 0, 0, 0.6))
 		
-func _draw_border_glow(board_w: int, board_h: int, thickness: int) -> void:
+func _draw_border_glow(board_w: int, board_h: int, thickness: float) -> void:
 	#var pulse := (sin(Time.get_ticks_msec() * 0.004) + 1.0) * 0.5
 	var pulse := (sin(Time.get_ticks_msec() / 1000.0 * TAU * 1.2) + 1.0) * 0.5
 	var glow_color := _active_piece.color
@@ -477,7 +477,7 @@ func _draw_border_glow(board_w: int, board_h: int, thickness: int) -> void:
 	# glows inward
 	#draw_rect(Rect2(thickness, thickness, board_w - 2*thickness, board_h - 2*thickness), glow_color, false, thickness + pulse * 2.0)
 	# glows outwards
-	var thi = thickness/3.0
+	var thi := thickness / 3.0
 	draw_rect(Rect2(-thi, -thi, board_w + 2*thi, board_h + 2*thi), glow_color, false, thickness)
 	# redraw border in white for emphasis
 	draw_rect(Rect2(0, 0, board_w, board_h), Color.WHITE, false, 2.0)
