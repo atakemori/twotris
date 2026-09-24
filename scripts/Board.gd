@@ -53,6 +53,7 @@ var _grid: Array = []
 var _active_piece:    Piece      = null
 var _active_pos:      Vector2i   = Vector2i.ZERO  # rotation pivot (offset 0,0) in grid coords
 var _next_piece:      Piece      = null
+var _piece_bag:       Array[Piece.Type] = []
 
 var _rng:             RandomNumberGenerator = RandomNumberGenerator.new()
 var _gravity_timer:   float = 0.0
@@ -83,7 +84,8 @@ func start(seed_value: int) -> void:
 	# A reused board must not retain the last round's falling piece while it
 	# waits for the scheduler.
 	_active_piece = null
-	_next_piece = PieceSet.random(_rng, piece_set)
+	_piece_bag.clear()
+	_next_piece = _draw_piece_from_bag()
 	if !listen_for_drop:
 		spawn_next(LEFT_BOARD_START_OFFSET if is_left_board else 0)
 	queue_redraw()
@@ -307,7 +309,7 @@ func _remove_row(r: int) -> void:
 
 func spawn_next(row_offset: int = 0) -> void:
 	_active_piece = _next_piece
-	_next_piece   = PieceSet.random(_rng, piece_set)
+	_next_piece   = _draw_piece_from_bag()
 
 	# Center horizontally, start one row above the top
 	_active_pos = Vector2i((cols / 2) - 1, -1 + row_offset)
@@ -329,7 +331,17 @@ func set_piece_set(new_piece_set: PieceSet.Set) -> void:
 	if piece_set == new_piece_set:
 		return
 	piece_set = new_piece_set
-	_next_piece = PieceSet.random(_rng, piece_set)
+	_piece_bag.clear()
+	_next_piece = _draw_piece_from_bag()
+
+## Draws one piece from a shuffled-without-replacement bag, refilling it only
+## after every type in the active piece set has been used once.
+func _draw_piece_from_bag() -> Piece:
+	if _piece_bag.is_empty():
+		_piece_bag = PieceSet.types_for_set(piece_set)
+	var bag_index := _rng.randi_range(0, _piece_bag.size() - 1)
+	var piece_type: Piece.Type = _piece_bag.pop_at(bag_index)
+	return PieceSet.make_for_set(piece_type, piece_set)
 
 func set_hard_drop_target(is_target: bool) -> void:
 	if _hard_drop_target == is_target:
