@@ -449,6 +449,7 @@ func save_named_state(state_name: String) -> bool:
 		"name": safe_name,
 		"created_unix": Time.get_unix_time_from_system(),
 		"piece_set": int(_piece_set),
+		"next_board_score_threshold": _next_board_score_threshold,
 		"boards": board_states,
 		"scheduler": _drop_scheduler.capture_state(),
 	}
@@ -489,6 +490,17 @@ func load_named_state(state_name: String) -> bool:
 		_scores[i] = int(saved.get("score", 0))
 		var board_state: Dictionary = saved.get("board", saved)
 		_boards[i].restore_state(board_state)
+	var saved_threshold := int(parsed.get("next_board_score_threshold", 0))
+	if saved_threshold > 0:
+		_next_board_score_threshold = saved_threshold
+	else:
+		# Older snapshots did not store this counter. Reconstruct the next
+		# interval from the restored score total instead of restarting at zero.
+		var total_score := _total_score()
+		_next_board_score_threshold = max(
+			board_score_interval,
+			(floori(float(total_score) / float(maxi(board_score_interval, 1))) + 1) * board_score_interval
+		)
 	_pending_scheduler_state = parsed.get("scheduler", {})
 	_update_score_labels()
 	_update_piece_set_label()
