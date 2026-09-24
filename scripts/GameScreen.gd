@@ -70,7 +70,7 @@ const BOARD_SCORE_LABEL_WIDTH: float = 58.0
 const BOARD_SCORE_LABEL_GAP: float = 10.0
 
 # Points awarded per number of lines cleared in a single drop
-const LINE_POINTS := [0, 100, 300, 700, 1500]
+const LINE_POINTS := [0, 100, 300, 400, 500]
 const SAVED_STATE_DIRECTORY := "user://saved_games"
 const DEFAULT_SAVED_STATE_NAME := "quicksave"
 
