@@ -43,6 +43,8 @@ extends CanvasLayer
 @onready var _drop_scheduler: DropScheduler = $Control/DropScheduler
 @onready var _drop_rhythm_indicator: DropRhythmIndicator = $Control/DropRhythmIndicator
 
+var _gravity_timer: Timer = null
+
 var _boards: Array[Board] = []
 var _score_labels: Array[Label] = []
 var _scores: Array[int] = []
@@ -92,6 +94,12 @@ func _ready() -> void:
 	_drop_scheduler.set_boards(_boards)
 
 	_drop_scheduler.drop_requested.connect(_on_drop_requested)
+	_gravity_timer = Timer.new()
+	_gravity_timer.name = "SharedGravityTimer"
+	_gravity_timer.wait_time = board_left.gravity_interval
+	_gravity_timer.one_shot = false
+	_gravity_timer.timeout.connect(_on_shared_gravity_tick)
+	add_child(_gravity_timer)
 
 # Called by ScreenManager.go_to("GameScreen") — resets and starts a fresh game.
 func init(_data: Dictionary = {}) -> void:
@@ -117,6 +125,15 @@ func init(_data: Dictionary = {}) -> void:
 	_audio_listener.make_current()
 
 	_drop_scheduler.begin()
+	_gravity_timer.start()
+
+## Advances every active board from one shared timer event so a newly added
+## board joins the same gravity phase instead of starting its own clock.
+func _on_shared_gravity_tick() -> void:
+	if not _game_active:
+		return
+	for board in _boards:
+		board.gravity_tick()
 
 func _on_drop_requested(board: Board) -> void:
 	# Retain the condition here so an accidental duplicate signal cannot replace
@@ -173,6 +190,8 @@ func _on_game_over() -> void:
 		return
 	_game_active = false
 	_drop_scheduler.stop()
+	if _gravity_timer:
+		_gravity_timer.stop()
 	get_tree().paused = false   # Make sure tree isn't stuck paused
 
 	# Short delay so the player sees the game-over board state before the screen switches
@@ -365,6 +384,7 @@ func _register_board(board: Board, position_now: bool = true) -> void:
 	var board_index := _boards.size()
 	board.board_index = board_index
 	board.listen_for_drop = true
+	board.use_external_gravity = true
 	board.piece_set = _piece_set
 
 	_boards.append(board)

@@ -34,6 +34,7 @@ const LEFT_BOARD_START_OFFSET: int = 9
 # ── Timing ──────────────────────────────────────────────────────────────────
 @export var gravity_interval: float = 0.8   # seconds between automatic drops
 @export var listen_for_drop: bool = false
+@export var use_external_gravity: bool = false
 
 # ── Cosmetics ───────────────────────────────────────────────────────────────
 @export var bg_color:     Color = Color(0.08, 0.08, 0.12)
@@ -97,10 +98,20 @@ func _process(delta: float) -> void:
 	if _hard_drop_target:
 		queue_redraw()
 
+	if use_external_gravity:
+		return
+
 	_gravity_timer += delta
 	if _gravity_timer >= gravity_interval:
 		_gravity_timer = 0.0
 		_gravity_step()
+
+## Applies one synchronized gravity step when the shared game clock ticks.
+## Boards using external gravity never advance their own delta-based timer.
+func gravity_tick() -> void:
+	if not use_external_gravity or not _alive:
+		return
+	_gravity_step()
 
 # Drop the active piece by one row; lock if it can't move.
 func _gravity_step() -> void:
