@@ -104,7 +104,7 @@ func set_grid_state(state: Array) -> void:
 			var value = saved_row[c]
 			if value is Color:
 				_grid[r][c] = value
-			elif value is String:
+			elif value is String and not value.is_empty():
 				_grid[r][c] = Color(value)
 	queue_redraw()
 
@@ -176,9 +176,15 @@ func restore_state(state: Dictionary) -> void:
 		_piece_bag.append(int(piece_type))
 	_active_piece = _deserialize_piece(state.get("active_piece", {}))
 	_next_piece = _deserialize_piece(state.get("next_piece", {}))
+	if _next_piece == null:
+		_next_piece = _draw_piece_from_bag()
 	var saved_position = state.get("active_position", [0, 0])
 	if saved_position is Array and saved_position.size() >= 2:
 		_active_pos = Vector2i(int(saved_position[0]), int(saved_position[1]))
+	if _active_piece != null and not _fits(_active_piece, _active_pos):
+		# A snapshot from an older format or a manually edited file should not
+		# turn into an immediate top-out when it is loaded.
+		_active_piece = null
 	_gravity_timer = float(state.get("gravity_timer", 0.0))
 	_alive = bool(state.get("alive", true))
 	queue_redraw()

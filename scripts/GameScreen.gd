@@ -456,6 +456,7 @@ func save_named_state(state_name: String) -> bool:
 	if file == null:
 		return false
 	file.store_string(JSON.stringify(payload))
+	print("Saved game state to: ", ProjectSettings.globalize_path(_state_path(safe_name)))
 	return true
 
 ## Compatibility wrapper for older callers that passed a complete file path.
@@ -521,6 +522,10 @@ func list_saved_states() -> Array:
 		return int(a["created_unix"]) > int(b["created_unix"])
 	)
 	return results
+
+## Returns the OS-visible folder containing named game-state files.
+func get_saved_states_directory() -> String:
+	return ProjectSettings.globalize_path(SAVED_STATE_DIRECTORY)
 
 func _safe_state_name(state_name: String) -> String:
 	return state_name.strip_edges().validate_filename()
