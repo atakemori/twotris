@@ -173,7 +173,7 @@ func _update_score_labels() -> void:
 # ── Pause ─────────────────────────────────────────────────────────────────────
 
 func _on_pause_requested() -> void:
-	if not _game_active:
+	if not _game_active and not _paused:
 		return
 	_paused = not _paused
 	get_tree().paused   = _paused

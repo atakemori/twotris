@@ -20,10 +20,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -20.0
-offset_top = -20.0
-offset_right = 20.0
-offset_bottom = 20.0
+offset_left = -526.5
+offset_top = -172.0
+offset_right = -96.0
+offset_bottom = 170.0
 grow_horizontal = 2
 grow_vertical = 2
 alignment = 1
@@ -45,21 +45,45 @@ layout_mode = 2
 layout_mode = 2
 text = "Play"
 
-[node name="SavedStates" type="VBoxContainer" parent="Control/VBoxContainer"]
-visible = false
-layout_mode = 2
-
-[node name="SavedStatesLabel" type="Label" parent="Control/VBoxContainer/SavedStates"]
-layout_mode = 2
-text = "Saved games"
-
-[node name="ResumeButton" type="Button" parent="Control/VBoxContainer"]
-visible = false
-disabled = true
-layout_mode = 2
-text = "Resume selected"
-
 [node name="ControlsLabel" type="Label" parent="Control/VBoxContainer" unique_id=279101089]
 layout_mode = 2
-text = "← → move   ↑ rotate CW   Z rotate CCW   Space hard drop   P pause   Tab switch pieces
+text = "← → move   ↑ rotate CW   Z rotate CCW
+Space hard drop   P pause   Tab switch pieces
 "
+
+[node name="SavedStatesPanel" type="PanelContainer" parent="Control" unique_id=729677519]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 40.0
+offset_top = -170.0
+offset_right = 400.0
+offset_bottom = 170.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SavedStates" type="VBoxContainer" parent="Control/SavedStatesPanel" unique_id=793059838]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SavedStatesLabel" type="Label" parent="Control/SavedStatesPanel/SavedStates" unique_id=845721952]
+layout_mode = 2
+text = "Saved sessions: none found"
+
+[node name="SavedStatesScroll" type="ScrollContainer" parent="Control/SavedStatesPanel/SavedStates" unique_id=863338666]
+custom_minimum_size = Vector2(0, 240)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="SavedStateButtons" type="VBoxContainer" parent="Control/SavedStatesPanel/SavedStates/SavedStatesScroll" unique_id=1495945315]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="ResumeButton" type="Button" parent="Control/SavedStatesPanel/SavedStates" unique_id=1758519004]
+layout_mode = 2
+disabled = true
+text = "Resume selected session"
