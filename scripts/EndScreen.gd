@@ -30,19 +30,35 @@ func _ready() -> void:
 
 # Called by ScreenManager.go_to("EndScreen", data) with score data.
 func init(data: Dictionary = {}) -> void:
-	var sl: int = data.get("score_left",  0)
-	var sr: int = data.get("score_right", 0)
+	var scores: Array = data.get("scores", [])
+	if scores.is_empty():
+		scores = [data.get("score_left", 0), data.get("score_right", 0)]
 
-	left_score_label.text  = "Left board:   %d" % sl
-	right_score_label.text = "Right board:  %d" % sr
-	total_label.text       = "Total:        %d" % (sl + sr)
+	var total := 0
+	var high_score := -1
+	var winner_index := -1
+	var tied := false
+	for i in scores.size():
+		var score: int = scores[i]
+		total += score
+		if score > high_score:
+			high_score = score
+			winner_index = i
+			tied = false
+		elif score == high_score:
+			tied = true
 
-	if sl > sr:
-		winner_label.text = "Left board wins!"
-	elif sr > sl:
-		winner_label.text = "Right board wins!"
-	else:
+	var score_lines: Array[String] = []
+	for i in scores.size():
+		score_lines.append("Board %d:      %d" % [i + 1, int(scores[i])])
+	left_score_label.text = "\n".join(score_lines)
+	right_score_label.text = ""
+	total_label.text = "Total:        %d" % total
+
+	if tied:
 		winner_label.text = "It's a tie!"
+	else:
+		winner_label.text = "Board %d wins!" % (winner_index + 1)
 
 	play_again_button.grab_focus()
 
