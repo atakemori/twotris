@@ -16,15 +16,23 @@ extends CanvasLayer
 
 @onready var play_button: Button = $Control/VBoxContainer/PlayButton
 @onready var saved_states: VBoxContainer = $Control/VBoxContainer/SavedStates
+@onready var resume_button: Button = $Control/VBoxContainer/ResumeButton
+
+var _selected_state_name: String = ""
 
 func _ready() -> void:
 	play_button.pressed.connect(_on_play_pressed)
+	resume_button.pressed.connect(_on_resume_pressed)
 	# Grab focus so Enter/Space also starts the game
 	play_button.grab_focus()
 	_refresh_saved_states()
 
 func _on_play_pressed() -> void:
 	ScreenManager.go_to("GameScreen")
+
+func _on_resume_pressed() -> void:
+	if not _selected_state_name.is_empty():
+		ScreenManager.go_to("GameScreen", {"saved_state_name": _selected_state_name})
 
 # Called by ScreenManager.go_to() whenever this screen becomes active.
 func init(_data: Dictionary = {}) -> void:
@@ -34,6 +42,9 @@ func init(_data: Dictionary = {}) -> void:
 ## Builds menu buttons from the named snapshots saved by GameScreen.
 ## Files are sorted by their recorded creation time, newest first.
 func _refresh_saved_states() -> void:
+	_selected_state_name = ""
+	resume_button.disabled = true
+	resume_button.visible = false
 	for child in saved_states.get_children():
 		child.queue_free()
 	var entries: Array = []
@@ -57,9 +68,21 @@ func _refresh_saved_states() -> void:
 	saved_states.visible = not entries.is_empty()
 	for entry in entries:
 		var button := Button.new()
-		button.text = "Load: %s" % entry["name"]
-		button.pressed.connect(_load_saved_state.bind(str(entry["name"])))
+		button.text = str(entry["name"])
+		button.toggle_mode = true
+		button.pressed.connect(_select_saved_state.bind(str(entry["name"]), button))
 		saved_states.add_child(button)
+	if not entries.is_empty():
+		resume_button.visible = true
 
-func _load_saved_state(state_name: String) -> void:
-	ScreenManager.go_to("GameScreen", {"saved_state_name": state_name})
+## Selects a saved session without starting it; Resume performs the navigation.
+func _select_saved_state(state_name: String, selected_button: Button) -> void:
+	_selected_state_name = state_name
+	resume_button.disabled = false
+	for sibling in saved_states.get_children():
+		if sibling is Button and sibling != selected_button:
+			sibling.button_pressed = false
+	selected_button.button_pressed = true
+
+func _on_resume_focus() -> void:
+	resume_button.grab_focus()

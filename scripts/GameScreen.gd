@@ -53,6 +53,7 @@ var _piece_set: PieceSet.Set = PieceSet.Set.TETROMINO
 var _next_board_score_threshold: int = 1000
 var _layout_tween: Tween = null
 var _pending_scheduler_state: Dictionary = {}
+var _active_saved_state_name: String = DEFAULT_SAVED_STATE_NAME
 
 const SCORE_BAR_WIDTH: float = 28.0
 const SCORE_BAR_MARGIN: float = 30.0
@@ -119,6 +120,7 @@ func init(_data: Dictionary = {}) -> void:
 		or (restore_saved_board_states and load_named_state(DEFAULT_SAVED_STATE_NAME)):
 		pass
 	else:
+		_active_saved_state_name = DEFAULT_SAVED_STATE_NAME
 		var base_seed := randi()
 		for i in _boards.size():
 			_boards[i].start(base_seed + i * 99999)
@@ -133,10 +135,10 @@ func init(_data: Dictionary = {}) -> void:
 		_pending_scheduler_state.clear()
 
 func _on_save_state_requested() -> void:
-	save_named_state(DEFAULT_SAVED_STATE_NAME)
+	save_named_state(_active_saved_state_name)
 
 func _on_load_state_requested() -> void:
-	if load_named_state(DEFAULT_SAVED_STATE_NAME):
+	if load_named_state(_active_saved_state_name):
 		_drop_scheduler.begin()
 		if not _pending_scheduler_state.is_empty():
 			_drop_scheduler.restore_state(_pending_scheduler_state)
@@ -478,6 +480,7 @@ func load_named_state(state_name: String) -> bool:
 	var saved_boards: Array = parsed["boards"]
 	if saved_boards.is_empty():
 		return false
+	_active_saved_state_name = _safe_state_name(state_name)
 	var saved_piece_set := int(parsed.get("piece_set", int(_piece_set)))
 	_piece_set = PieceSet.Set.TRIOMINO if saved_piece_set == int(PieceSet.Set.TRIOMINO) else PieceSet.Set.TETROMINO
 	_reset_to_starting_boards()
