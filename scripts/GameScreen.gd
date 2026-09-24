@@ -52,6 +52,7 @@ var _game_active: bool = false
 var _piece_set: PieceSet.Set = PieceSet.Set.TETROMINO
 var _next_board_score_threshold: int = 1000
 var _layout_tween: Tween = null
+var _pending_scheduler_state: Dictionary = {}
 
 const SCORE_BAR_WIDTH: float = 28.0
 const SCORE_BAR_MARGIN: float = 30.0
@@ -70,7 +71,8 @@ const BOARD_SCORE_LABEL_GAP: float = 10.0
 
 # Points awarded per number of lines cleared in a single drop
 const LINE_POINTS := [0, 100, 300, 700, 1500]
-const BOARD_STATE_SAVE_PATH := "user://twotris_board_states.json"
+const SAVED_STATE_DIRECTORY := "user://saved_games"
+const DEFAULT_SAVED_STATE_NAME := "quicksave"
 
 func _ready() -> void:
 	print("GameScreen _ready() called")
@@ -91,6 +93,8 @@ func _ready() -> void:
 	input_router.boards = _boards
 	input_router.pause_requested.connect(_on_pause_requested)
 	input_router.piece_set_toggle_requested.connect(_on_piece_set_toggle_requested)
+	input_router.save_state_requested.connect(_on_save_state_requested)
+	input_router.load_state_requested.connect(_on_load_state_requested)
 	_drop_scheduler.set_boards(_boards)
 
 	_drop_scheduler.drop_requested.connect(_on_drop_requested)
@@ -110,7 +114,9 @@ func init(_data: Dictionary = {}) -> void:
 	pause_overlay.visible = false
 
 	# Seed each board independently with a random int
-	if restore_saved_board_states and load_board_states():
+	var requested_state := str(_data.get("saved_state_name", ""))
+	if (not requested_state.is_empty() and load_named_state(requested_state)) \
+		or (restore_saved_board_states and load_named_state(DEFAULT_SAVED_STATE_NAME)):
 		pass
 	else:
 		var base_seed := randi()
@@ -122,6 +128,19 @@ func init(_data: Dictionary = {}) -> void:
 	_audio_listener.make_current()
 
 	_drop_scheduler.begin()
+	if not _pending_scheduler_state.is_empty():
+		_drop_scheduler.restore_state(_pending_scheduler_state)
+		_pending_scheduler_state.clear()
+
+func _on_save_state_requested() -> void:
+	save_named_state(DEFAULT_SAVED_STATE_NAME)
+
+func _on_load_state_requested() -> void:
+	if load_named_state(DEFAULT_SAVED_STATE_NAME):
+		_drop_scheduler.begin()
+		if not _pending_scheduler_state.is_empty():
+			_drop_scheduler.restore_state(_pending_scheduler_state)
+			_pending_scheduler_state.clear()
 
 func _on_drop_requested(board: Board) -> void:
 	# Retain the condition here so an accidental duplicate signal cannot replace
@@ -413,25 +432,42 @@ func _add_board() -> void:
 	_position_boards(true, _boards.size() - 1)
 	board.start(randi(), junk_state)
 
-## Saves every board's locked grid and score to a JSON file for playtesting.
-## The optional path is exposed so tests can use a temporary location.
-func save_board_states(path: String = BOARD_STATE_SAVE_PATH) -> bool:
+## Saves every independently captured board plus scheduler metadata under a
+## human-readable name in the shared saved-game directory.
+func save_named_state(state_name: String) -> bool:
+	var safe_name := _safe_state_name(state_name)
+	if safe_name.is_empty():
+		return false
+	var user_directory := DirAccess.open("user://")
+	if user_directory:
+		user_directory.make_dir_recursive("saved_games")
 	var board_states: Array = []
 	for i in _boards.size():
-		board_states.append({"grid": _boards[i].get_grid_state(), "score": _scores[i]})
-	var payload := {"piece_set": int(_piece_set), "boards": board_states}
-	var file := FileAccess.open(path, FileAccess.WRITE)
+		board_states.append({"score": _scores[i], "board": _boards[i].capture_state()})
+	var payload := {
+		"version": 2,
+		"name": safe_name,
+		"created_unix": Time.get_unix_time_from_system(),
+		"piece_set": int(_piece_set),
+		"boards": board_states,
+		"scheduler": _drop_scheduler.capture_state(),
+	}
+	var file := FileAccess.open(_state_path(safe_name), FileAccess.WRITE)
 	if file == null:
 		return false
 	file.store_string(JSON.stringify(payload))
 	return true
 
-## Loads a saved board layout, creating enough runtime boards to match it.
-## Call this after init or set restore_saved_board_states before the next init.
-func load_board_states(path: String = BOARD_STATE_SAVE_PATH) -> bool:
-	if not FileAccess.file_exists(path):
-		return false
-	var file := FileAccess.open(path, FileAccess.READ)
+## Compatibility wrapper for older callers that passed a complete file path.
+func save_board_states(path: String = "") -> bool:
+	var state_name := DEFAULT_SAVED_STATE_NAME if path.is_empty() else path.get_file().get_basename()
+	return save_named_state(state_name)
+
+## Loads a named snapshot, recreating the required number of boards and asking
+## each board to restore its own serialized state record.
+func load_named_state(state_name: String) -> bool:
+	_drop_scheduler.stop()
+	var file := FileAccess.open(_state_path(_safe_state_name(state_name)), FileAccess.READ)
 	if file == null:
 		return false
 	var parsed = JSON.parse_string(file.get_as_text())
@@ -450,12 +486,47 @@ func load_board_states(path: String = BOARD_STATE_SAVE_PATH) -> bool:
 		if not saved is Dictionary:
 			continue
 		_scores[i] = int(saved.get("score", 0))
-		_boards[i].piece_set = _piece_set
-		_boards[i].start(randi(), saved.get("grid", []))
+		var board_state: Dictionary = saved.get("board", saved)
+		_boards[i].restore_state(board_state)
+	_pending_scheduler_state = parsed.get("scheduler", {})
 	_update_score_labels()
 	_update_piece_set_label()
 	_position_boards()
 	return true
+
+## Compatibility wrapper for the previous default save path API.
+func load_board_states(_path: String = "") -> bool:
+	return load_named_state(DEFAULT_SAVED_STATE_NAME)
+
+## Returns saved-state metadata sorted from newest to oldest for a menu list.
+func list_saved_states() -> Array:
+	var results: Array = []
+	var directory := DirAccess.open(SAVED_STATE_DIRECTORY)
+	if directory == null:
+		return results
+	var filename := directory.get_next()
+	while not filename.is_empty():
+		if not directory.current_is_dir() and filename.get_extension() == "json":
+			var file := FileAccess.open(SAVED_STATE_DIRECTORY.path_join(filename), FileAccess.READ)
+			if file:
+				var parsed = JSON.parse_string(file.get_as_text())
+				if parsed is Dictionary:
+					results.append({
+						"name": parsed.get("name", filename.get_basename()),
+						"created_unix": int(parsed.get("created_unix", 0)),
+						"board_count": parsed.get("boards", []).size(),
+					})
+		filename = directory.get_next()
+	results.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a["created_unix"]) > int(b["created_unix"])
+	)
+	return results
+
+func _safe_state_name(state_name: String) -> String:
+	return state_name.strip_edges().validate_filename()
+
+func _state_path(state_name: String) -> String:
+	return SAVED_STATE_DIRECTORY.path_join(_safe_state_name(state_name) + ".json")
 
 ## Restores a fresh round to the two scene-authored boards.
 ## Runtime boards and their generated score labels are removed; the remaining

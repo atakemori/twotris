@@ -145,6 +145,72 @@ func make_random_junk_state(target_height: int, rng: RandomNumberGenerator) -> A
 		state.append(saved_row)
 	return state
 
+## Captures this board without including any game-wide score or scheduler data.
+## The returned dictionary can be stored as one element of a larger snapshot.
+func capture_state() -> Dictionary:
+	var bag_types: Array = []
+	for piece_type in _piece_bag:
+		bag_types.append(int(piece_type))
+	return {
+		"grid": get_grid_state(),
+		"rng_seed": _rng.seed,
+		"rng_state": _rng.state,
+		"piece_set": int(piece_set),
+		"piece_bag": bag_types,
+		"active_piece": _serialize_piece(_active_piece),
+		"active_position": [_active_pos.x, _active_pos.y],
+		"next_piece": _serialize_piece(_next_piece),
+		"gravity_timer": _gravity_timer,
+		"alive": _alive,
+	}
+
+## Restores only this board's state, allowing callers to compose snapshots from
+## independently saved board records without knowing the board internals.
+func restore_state(state: Dictionary) -> void:
+	set_grid_state(state.get("grid", []))
+	piece_set = PieceSet.Set.TRIOMINO if int(state.get("piece_set", int(piece_set))) == int(PieceSet.Set.TRIOMINO) else PieceSet.Set.TETROMINO
+	_rng.seed = int(state.get("rng_seed", _rng.seed))
+	_rng.state = int(state.get("rng_state", _rng.state))
+	_piece_bag.clear()
+	for piece_type in state.get("piece_bag", []):
+		_piece_bag.append(int(piece_type))
+	_active_piece = _deserialize_piece(state.get("active_piece", {}))
+	_next_piece = _deserialize_piece(state.get("next_piece", {}))
+	var saved_position = state.get("active_position", [0, 0])
+	if saved_position is Array and saved_position.size() >= 2:
+		_active_pos = Vector2i(int(saved_position[0]), int(saved_position[1]))
+	_gravity_timer = float(state.get("gravity_timer", 0.0))
+	_alive = bool(state.get("alive", true))
+	queue_redraw()
+
+func _serialize_piece(piece: Piece) -> Dictionary:
+	if piece == null:
+		return {}
+	var saved_offsets: Array = []
+	for offset in piece.offsets:
+		saved_offsets.append([offset.x, offset.y])
+	return {
+		"type": int(piece.type),
+		"color": piece.color.to_html(true),
+		"offsets": saved_offsets,
+		"can_rotate": piece.can_rotate,
+	}
+
+func _deserialize_piece(data: Dictionary) -> Piece:
+	if data.is_empty():
+		return null
+	var piece_type: Piece.Type = int(data.get("type", int(Piece.Type.I)))
+	var offsets: Array[Vector2i] = []
+	for offset in data.get("offsets", []):
+		if offset is Array and offset.size() >= 2:
+			offsets.append(Vector2i(int(offset[0]), int(offset[1])))
+	return Piece.new(
+		piece_type,
+		Color(str(data.get("color", "ffffff"))),
+		offsets,
+		bool(data.get("can_rotate", true))
+	)
+
 # ── Update loop ──────────────────────────────────────────────────────────────
 
 func _process(delta: float) -> void:
