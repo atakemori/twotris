@@ -19,12 +19,14 @@ extends CanvasLayer
 @onready var saved_states_label: Label = $Control/SavedStatesPanel/SavedStates/SavedStatesLabel
 @onready var saved_state_buttons: VBoxContainer = $Control/SavedStatesPanel/SavedStates/SavedStatesScroll/SavedStateButtons
 @onready var resume_button: Button = $Control/SavedStatesPanel/SavedStates/ResumeButton
+@onready var open_folder_button: Button = $Control/SavedStatesPanel/SavedStates/OpenFolderButton
 
 var _selected_state_name: String = ""
 
 func _ready() -> void:
 	play_button.pressed.connect(_on_play_pressed)
 	resume_button.pressed.connect(_on_resume_pressed)
+	open_folder_button.pressed.connect(_on_open_folder_pressed)
 	# Grab focus so Enter/Space also starts the game
 	play_button.grab_focus()
 	_refresh_saved_states()
@@ -35,6 +37,12 @@ func _on_play_pressed() -> void:
 func _on_resume_pressed() -> void:
 	if not _selected_state_name.is_empty():
 		ScreenManager.go_to("GameScreen", {"saved_state_name": _selected_state_name})
+
+func _on_open_folder_pressed() -> void:
+	var user_directory := DirAccess.open("user://")
+	if user_directory:
+		user_directory.make_dir_recursive("saved_games")
+	OS.shell_open(ProjectSettings.globalize_path("user://saved_games"))
 
 # Called by ScreenManager.go_to() whenever this screen becomes active.
 func init(_data: Dictionary = {}) -> void:

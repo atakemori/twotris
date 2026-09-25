@@ -83,7 +83,15 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
+[node name="OpenFolderButton" type="Button" parent="Control/SavedStatesPanel/SavedStates" unique_id=637907077]
+layout_mode = 2
+text = "Open saved sessions folder"
+
 [node name="ResumeButton" type="Button" parent="Control/SavedStatesPanel/SavedStates" unique_id=1758519004]
 layout_mode = 2
 disabled = true
+theme_override_colors/font_color = Color(0.35, 0.9, 0.45, 1)
+theme_override_colors/font_hover_color = Color(0.55, 1, 0.65, 1)
+theme_override_colors/font_pressed_color = Color(0.25, 0.75, 0.35, 1)
+theme_override_colors/font_disabled_color = Color(0.45, 0.45, 0.45, 1)
 text = "Resume selected session"
