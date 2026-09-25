@@ -54,6 +54,7 @@ var _grid: Array = []
 var _active_piece:    Piece      = null
 var _active_pos:      Vector2i   = Vector2i.ZERO  # rotation pivot (offset 0,0) in grid coords
 var _next_piece:      Piece      = null
+var _piece_bag:       Array[Piece.Type] = []
 
 var _rng:             RandomNumberGenerator = RandomNumberGenerator.new()
 var _gravity_timer:   float = 0.0
@@ -76,18 +77,146 @@ func _init_grid() -> void:
 		_grid.append(row)
 
 # Call this from GameScreen after both boards are ready, passing a unique seed.
-func start(seed_value: int) -> void:
+func start(seed_value: int, starting_grid: Array = []) -> void:
 	_rng.seed = seed_value
 	_alive = true
 	_gravity_timer = 0.0
 	_init_grid()
+	if not starting_grid.is_empty():
+		set_grid_state(starting_grid)
 	# A reused board must not retain the last round's falling piece while it
 	# waits for the scheduler.
 	_active_piece = null
-	_next_piece = PieceSet.random(_rng, piece_set)
+	_piece_bag.clear()
+	_next_piece = _draw_piece_from_bag()
 	if !listen_for_drop:
 		spawn_next(LEFT_BOARD_START_OFFSET if is_left_board else 0)
 	queue_redraw()
+
+## Replaces the locked-cell grid with a validated saved or generated state.
+## Rows and columns outside this board's dimensions are ignored.
+func set_grid_state(state: Array) -> void:
+	_init_grid()
+	for r in range(mini(state.size(), rows)):
+		var saved_row = state[r]
+		if not saved_row is Array:
+			continue
+		for c in range(mini(saved_row.size(), cols)):
+			var value = saved_row[c]
+			if value is Color:
+				_grid[r][c] = value
+			elif value is String and not value.is_empty():
+				_grid[r][c] = Color(value)
+	queue_redraw()
+
+## Returns the locked grid as JSON-friendly color strings for playtest saves.
+func get_grid_state() -> Array:
+	var state: Array = []
+	for r in rows:
+		var saved_row: Array = []
+		for c in cols:
+			saved_row.append(_grid[r][c].to_html(true) if _grid[r][c].a > 0.0 else "")
+		state.append(saved_row)
+	return state
+
+## Returns the number of occupied rows measured upward from the bottom.
+func get_stack_height() -> int:
+	for r in rows:
+		for c in cols:
+			if _grid[r][c].a > 0.0:
+				return rows - r
+	return 0
+
+## Builds a simple randomized garbage state for a newly created board.
+## The bottom target_height rows are filled with colored blocks and holes.
+func make_random_junk_state(target_height: int, rng: RandomNumberGenerator) -> Array:
+	var state: Array = []
+	var colors: Array = PieceSet.COLORS.values()
+	var clamped_height := clampi(target_height, 0, maxi(rows - 1, 0))
+	for r in rows:
+		var saved_row: Array = []
+		for c in cols:
+			if r < rows - clamped_height and r >= 0:
+				saved_row.append("")
+			elif rng.randf() < 0.18:
+				saved_row.append("")
+			else:
+				var color: Color = colors[rng.randi_range(0, colors.size() - 1)]
+				saved_row.append(color.to_html(true))
+		state.append(saved_row)
+	return state
+
+## Captures this board without including any game-wide score or scheduler data.
+## The returned dictionary can be stored as one element of a larger snapshot.
+func capture_state() -> Dictionary:
+	var bag_types: Array = []
+	for piece_type in _piece_bag:
+		bag_types.append(int(piece_type))
+	return {
+		"grid": get_grid_state(),
+		"rng_seed": _rng.seed,
+		"rng_state": _rng.state,
+		"piece_set": int(piece_set),
+		"piece_bag": bag_types,
+		"active_piece": _serialize_piece(_active_piece),
+		"active_position": [_active_pos.x, _active_pos.y],
+		"next_piece": _serialize_piece(_next_piece),
+		"gravity_timer": _gravity_timer,
+		"alive": _alive,
+	}
+
+## Restores only this board's state, allowing callers to compose snapshots from
+## independently saved board records without knowing the board internals.
+func restore_state(state: Dictionary) -> void:
+	set_grid_state(state.get("grid", []))
+	piece_set = PieceSet.Set.TRIOMINO if int(state.get("piece_set", int(piece_set))) == int(PieceSet.Set.TRIOMINO) else PieceSet.Set.TETROMINO
+	_rng.seed = int(state.get("rng_seed", _rng.seed))
+	_rng.state = int(state.get("rng_state", _rng.state))
+	_piece_bag.clear()
+	for piece_type in state.get("piece_bag", []):
+		_piece_bag.append(int(piece_type))
+	_active_piece = _deserialize_piece(state.get("active_piece", {}))
+	_next_piece = _deserialize_piece(state.get("next_piece", {}))
+	if _next_piece == null:
+		_next_piece = _draw_piece_from_bag()
+	var saved_position = state.get("active_position", [0, 0])
+	if saved_position is Array and saved_position.size() >= 2:
+		_active_pos = Vector2i(int(saved_position[0]), int(saved_position[1]))
+	if _active_piece != null and not _fits(_active_piece, _active_pos):
+		# A snapshot from an older format or a manually edited file should not
+		# turn into an immediate top-out when it is loaded.
+		_active_piece = null
+	_gravity_timer = float(state.get("gravity_timer", 0.0))
+	_alive = bool(state.get("alive", true))
+	queue_redraw()
+
+func _serialize_piece(piece: Piece) -> Dictionary:
+	if piece == null:
+		return {}
+	var saved_offsets: Array = []
+	for offset in piece.offsets:
+		saved_offsets.append([offset.x, offset.y])
+	return {
+		"type": int(piece.type),
+		"color": piece.color.to_html(true),
+		"offsets": saved_offsets,
+		"can_rotate": piece.can_rotate,
+	}
+
+func _deserialize_piece(data: Dictionary) -> Piece:
+	if data.is_empty():
+		return null
+	var piece_type: Piece.Type = int(data.get("type", int(Piece.Type.I)))
+	var offsets: Array[Vector2i] = []
+	for offset in data.get("offsets", []):
+		if offset is Array and offset.size() >= 2:
+			offsets.append(Vector2i(int(offset[0]), int(offset[1])))
+	return Piece.new(
+		piece_type,
+		Color(str(data.get("color", "ffffff"))),
+		offsets,
+		bool(data.get("can_rotate", true))
+	)
 
 # ── Update loop ──────────────────────────────────────────────────────────────
 
@@ -318,7 +447,7 @@ func _remove_row(r: int) -> void:
 
 func spawn_next(row_offset: int = 0) -> void:
 	_active_piece = _next_piece
-	_next_piece   = PieceSet.random(_rng, piece_set)
+	_next_piece   = _draw_piece_from_bag()
 
 	# Center horizontally, start one row above the top
 	_active_pos = Vector2i((cols / 2) - 1, -1 + row_offset)
@@ -340,7 +469,17 @@ func set_piece_set(new_piece_set: PieceSet.Set) -> void:
 	if piece_set == new_piece_set:
 		return
 	piece_set = new_piece_set
-	_next_piece = PieceSet.random(_rng, piece_set)
+	_piece_bag.clear()
+	_next_piece = _draw_piece_from_bag()
+
+## Draws one piece from a shuffled-without-replacement bag, refilling it only
+## after every type in the active piece set has been used once.
+func _draw_piece_from_bag() -> Piece:
+	if _piece_bag.is_empty():
+		_piece_bag = PieceSet.types_for_set(piece_set)
+	var bag_index := _rng.randi_range(0, _piece_bag.size() - 1)
+	var piece_type: Piece.Type = _piece_bag.pop_at(bag_index)
+	return PieceSet.make_for_set(piece_type, piece_set)
 
 func set_hard_drop_target(is_target: bool) -> void:
 	if _hard_drop_target == is_target:

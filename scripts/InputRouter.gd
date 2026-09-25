@@ -22,6 +22,8 @@ extends Node
 
 signal pause_requested
 signal piece_set_toggle_requested
+signal save_state_requested
+signal load_state_requested
 
 @export var das_delay:  float = 0.17   # seconds before auto-repeat kicks in
 @export var das_repeat: float = 0.05   # seconds between repeats once DAS is active
@@ -90,6 +92,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event.is_action_pressed("toggle_piece_set"):
 		piece_set_toggle_requested.emit()
+
+	if event.is_action_pressed("save_board_state"):
+		save_state_requested.emit()
+
+	if event.is_action_pressed("load_board_state"):
+		load_state_requested.emit()
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

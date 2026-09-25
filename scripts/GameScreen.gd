@@ -26,6 +26,7 @@ extends CanvasLayer
 
 @export var board_scene: PackedScene
 @export var board_score_interval: int = 1000
+@export var restore_saved_board_states: bool = false
 
 @onready var board_left:   Board  = $Control/BoardL
 @onready var board_right:  Board  = $Control/BoardR
@@ -53,6 +54,8 @@ var _game_active: bool = false
 var _piece_set: PieceSet.Set = PieceSet.Set.TETROMINO
 var _next_board_score_threshold: int = 1000
 var _layout_tween: Tween = null
+var _pending_scheduler_state: Dictionary = {}
+var _active_saved_state_name: String = DEFAULT_SAVED_STATE_NAME
 
 const SCORE_BAR_WIDTH: float = 28.0
 const SCORE_BAR_MARGIN: float = 30.0
@@ -70,7 +73,9 @@ const BOARD_SCORE_LABEL_WIDTH: float = 58.0
 const BOARD_SCORE_LABEL_GAP: float = 10.0
 
 # Points awarded per number of lines cleared in a single drop
-const LINE_POINTS := [0, 100, 300, 700, 1500]
+const LINE_POINTS := [0, 100, 300, 400, 500]
+const SAVED_STATE_DIRECTORY := "user://saved_games"
+const DEFAULT_SAVED_STATE_NAME := "quicksave"
 
 func _ready() -> void:
 	print("GameScreen _ready() called")
@@ -91,6 +96,8 @@ func _ready() -> void:
 	input_router.boards = _boards
 	input_router.pause_requested.connect(_on_pause_requested)
 	input_router.piece_set_toggle_requested.connect(_on_piece_set_toggle_requested)
+	input_router.save_state_requested.connect(_on_save_state_requested)
+	input_router.load_state_requested.connect(_on_load_state_requested)
 	_drop_scheduler.set_boards(_boards)
 
 	_drop_scheduler.drop_requested.connect(_on_drop_requested)
@@ -116,16 +123,37 @@ func init(_data: Dictionary = {}) -> void:
 	pause_overlay.visible = false
 
 	# Seed each board independently with a random int
-	var base_seed := randi()
-	for i in _boards.size():
-		_boards[i].start(base_seed + i * 99999)
+	var requested_state := str(_data.get("saved_state_name", ""))
+	if (not requested_state.is_empty() and load_named_state(requested_state)) \
+		or (restore_saved_board_states and load_named_state(DEFAULT_SAVED_STATE_NAME)):
+		pass
+	else:
+		_active_saved_state_name = DEFAULT_SAVED_STATE_NAME
+		var base_seed := randi()
+		for i in _boards.size():
+			_boards[i].start(base_seed + i * 99999)
 
 	var viewport_size := get_viewport().get_visible_rect().size
 	_audio_listener.global_position = viewport_size / 2
 	_audio_listener.make_current()
 
+	# Start external timers for synchronization.
 	_drop_scheduler.begin()
 	_gravity_timer.start()
+
+	if not _pending_scheduler_state.is_empty():
+		_drop_scheduler.restore_state(_pending_scheduler_state)
+		_pending_scheduler_state.clear()
+
+func _on_save_state_requested() -> void:
+	save_named_state(_active_saved_state_name)
+
+func _on_load_state_requested() -> void:
+	if load_named_state(_active_saved_state_name):
+		_drop_scheduler.begin()
+		if not _pending_scheduler_state.is_empty():
+			_drop_scheduler.restore_state(_pending_scheduler_state)
+			_pending_scheduler_state.clear()
 
 ## Advances every active board from one shared timer event so a newly added
 ## board joins the same gravity phase instead of starting its own clock.
@@ -164,7 +192,7 @@ func _update_score_labels() -> void:
 # ── Pause ─────────────────────────────────────────────────────────────────────
 
 func _on_pause_requested() -> void:
-	if not _game_active:
+	if not _game_active and not _paused:
 		return
 	_paused = not _paused
 	get_tree().paused   = _paused
@@ -414,11 +442,133 @@ func _check_board_unlocks() -> void:
 func _add_board() -> void:
 	var board := board_scene.instantiate() as Board
 	board.name = "Board%d" % (_boards.size() + 1)
+	var junk_rng := RandomNumberGenerator.new()
+	junk_rng.seed = randi()
+	var average_height := 0.0
+	for existing_board in _boards:
+		average_height += existing_board.get_stack_height()
+	if not _boards.is_empty():
+		average_height /= float(_boards.size())
+	var junk_state := board.make_random_junk_state(roundi(average_height * 0.5), junk_rng)
 	$Control.add_child(board)
 	_register_board(board, false)
 	pause_overlay.move_to_front()
 	_position_boards(true, _boards.size() - 1)
-	board.start(randi())
+	board.start(randi(), junk_state)
+
+## Saves every independently captured board plus scheduler metadata under a
+## human-readable name in the shared saved-game directory.
+func save_named_state(state_name: String) -> bool:
+	var safe_name := _safe_state_name(state_name)
+	if safe_name.is_empty():
+		return false
+	var user_directory := DirAccess.open("user://")
+	if user_directory:
+		user_directory.make_dir_recursive("saved_games")
+	var board_states: Array = []
+	for i in _boards.size():
+		board_states.append({"score": _scores[i], "board": _boards[i].capture_state()})
+	var payload := {
+		"version": 2,
+		"name": safe_name,
+		"created_unix": Time.get_unix_time_from_system(),
+		"piece_set": int(_piece_set),
+		"next_board_score_threshold": _next_board_score_threshold,
+		"boards": board_states,
+		"scheduler": _drop_scheduler.capture_state(),
+	}
+	var file := FileAccess.open(_state_path(safe_name), FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(JSON.stringify(payload))
+	print("Saved game state to: ", ProjectSettings.globalize_path(_state_path(safe_name)))
+	return true
+
+## Compatibility wrapper for older callers that passed a complete file path.
+func save_board_states(path: String = "") -> bool:
+	var state_name := DEFAULT_SAVED_STATE_NAME if path.is_empty() else path.get_file().get_basename()
+	return save_named_state(state_name)
+
+## Loads a named snapshot, recreating the required number of boards and asking
+## each board to restore its own serialized state record.
+func load_named_state(state_name: String) -> bool:
+	_drop_scheduler.stop()
+	var file := FileAccess.open(_state_path(_safe_state_name(state_name)), FileAccess.READ)
+	if file == null:
+		return false
+	var parsed = JSON.parse_string(file.get_as_text())
+	if not parsed is Dictionary or not parsed.has("boards"):
+		return false
+	var saved_boards: Array = parsed["boards"]
+	if saved_boards.is_empty():
+		return false
+	_active_saved_state_name = _safe_state_name(state_name)
+	var saved_piece_set := int(parsed.get("piece_set", int(_piece_set)))
+	_piece_set = PieceSet.Set.TRIOMINO if saved_piece_set == int(PieceSet.Set.TRIOMINO) else PieceSet.Set.TETROMINO
+	_reset_to_starting_boards()
+	while _boards.size() < saved_boards.size():
+		_add_board()
+	for i in saved_boards.size():
+		var saved = saved_boards[i]
+		if not saved is Dictionary:
+			continue
+		_scores[i] = int(saved.get("score", 0))
+		var board_state: Dictionary = saved.get("board", saved)
+		_boards[i].restore_state(board_state)
+	var saved_threshold := int(parsed.get("next_board_score_threshold", 0))
+	if saved_threshold > 0:
+		_next_board_score_threshold = saved_threshold
+	else:
+		# Older snapshots did not store this counter. Reconstruct the next
+		# interval from the restored score total instead of restarting at zero.
+		var total_score := _total_score()
+		_next_board_score_threshold = max(
+			board_score_interval,
+			(floori(float(total_score) / float(maxi(board_score_interval, 1))) + 1) * board_score_interval
+		)
+	_pending_scheduler_state = parsed.get("scheduler", {})
+	_update_score_labels()
+	_update_piece_set_label()
+	_position_boards()
+	return true
+
+## Compatibility wrapper for the previous default save path API.
+func load_board_states(_path: String = "") -> bool:
+	return load_named_state(DEFAULT_SAVED_STATE_NAME)
+
+## Returns saved-state metadata sorted from newest to oldest for a menu list.
+func list_saved_states() -> Array:
+	var results: Array = []
+	var directory := DirAccess.open(SAVED_STATE_DIRECTORY)
+	if directory == null:
+		return results
+	var filename := directory.get_next()
+	while not filename.is_empty():
+		if not directory.current_is_dir() and filename.get_extension() == "json":
+			var file := FileAccess.open(SAVED_STATE_DIRECTORY.path_join(filename), FileAccess.READ)
+			if file:
+				var parsed = JSON.parse_string(file.get_as_text())
+				if parsed is Dictionary:
+					results.append({
+						"name": parsed.get("name", filename.get_basename()),
+						"created_unix": int(parsed.get("created_unix", 0)),
+						"board_count": parsed.get("boards", []).size(),
+					})
+		filename = directory.get_next()
+	results.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a["created_unix"]) > int(b["created_unix"])
+	)
+	return results
+
+## Returns the OS-visible folder containing named game-state files.
+func get_saved_states_directory() -> String:
+	return ProjectSettings.globalize_path(SAVED_STATE_DIRECTORY)
+
+func _safe_state_name(state_name: String) -> String:
+	return state_name.strip_edges().validate_filename()
+
+func _state_path(state_name: String) -> String:
+	return SAVED_STATE_DIRECTORY.path_join(_safe_state_name(state_name) + ".json")
 
 ## Restores a fresh round to the two scene-authored boards.
 ## Runtime boards and their generated score labels are removed; the remaining

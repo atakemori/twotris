@@ -99,8 +99,8 @@ static func make_triomino(type: Piece.Type) -> Piece:
 
 	return Piece.new(type, color, offsets)
 
-# Returns a random Piece using the provided RandomNumberGenerator.
-static func random(rng: RandomNumberGenerator, piece_set: Set = Set.TETROMINO) -> Piece:
+## Returns the complete piece-type pool for the selected ruleset.
+static func types_for_set(piece_set: Set = Set.TETROMINO) -> Array[Piece.Type]:
 	var all_types: Array[Piece.Type] = [
 		Piece.Type.I,
 		Piece.Type.L,
@@ -111,5 +111,14 @@ static func random(rng: RandomNumberGenerator, piece_set: Set = Set.TETROMINO) -
 	if piece_set == Set.TETROMINO:
 		all_types.append(Piece.Type.S)
 		all_types.append(Piece.Type.Z)
+	return all_types
+
+## Builds a piece of the requested type using the selected ruleset geometry.
+static func make_for_set(type: Piece.Type, piece_set: Set) -> Piece:
+	return make(type) if piece_set == Set.TETROMINO else make_triomino(type)
+
+# Returns a random Piece using the provided RandomNumberGenerator.
+static func random(rng: RandomNumberGenerator, piece_set: Set = Set.TETROMINO) -> Piece:
+	var all_types := types_for_set(piece_set)
 	var idx := rng.randi_range(0, all_types.size() - 1)
-	return make(all_types[idx]) if piece_set == Set.TETROMINO else make_triomino(all_types[idx])
+	return make_for_set(all_types[idx], piece_set)

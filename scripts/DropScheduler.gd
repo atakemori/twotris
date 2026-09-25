@@ -70,4 +70,24 @@ func _on_timer_timeout() -> void:
 func get_progress() -> float:
 	if _timer.wait_time <= 0.0:
 		return 0.0
-	return 1.0 - (_timer.time_left / _timer.wait_time)
+	return clampf(1.0 - (_timer.time_left / _timer.wait_time), 0.0, 1.0)
+
+## Captures the scheduler turn and remaining interval for a full-game snapshot.
+func capture_state() -> Dictionary:
+	return {
+		"current_board_index": _current_board_index,
+		"time_left": _timer.time_left if not _timer.is_stopped() else interval_seconds,
+	}
+
+## Restores scheduler position after begin() has initialized its timer.
+func restore_state(state: Dictionary) -> void:
+	if boards.is_empty():
+		return
+	_current_board_index = clampi(
+		int(state.get("current_board_index", 0)),
+		0,
+		boards.size() - 1
+	)
+	var time_left := clampf(float(state.get("time_left", interval_seconds)), 0.01, interval_seconds)
+	_timer.start(time_left)
+	turn_changed.emit(boards[_current_board_index])
